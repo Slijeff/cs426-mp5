@@ -1,0 +1,1 @@
+opt-15 -load-pass-plugin=./build/libUnitProject.so -passes="loop-simplify,unit-licm" -disable-output ./tests/simple.ll
