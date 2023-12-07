@@ -1,11 +1,16 @@
 // Usage: opt -load-pass-plugin=libUnitProject.so -passes="unit-licm"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "UnitLICM.h"
 #include "UnitLoopInfo.h"
 
-#define DEBUG_TYPE UnitLICM
+//#define DEBUG_TYPE UnitLICM
+#define DEBUG_TYPE "UnitLICM"
 // Define any statistics here
+STATISTIC(NumStores, "Number of hoisted stores added");
+STATISTIC(NumLoads, "Number of hoisted loads added");
+STATISTIC(NumCompHoisted, "Number of computational instructions that are hoisted");
 
 using namespace llvm;
 using namespace cs426;
