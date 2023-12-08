@@ -1,47 +1,22 @@
-; ModuleID = 'simple.c'
-source_filename = "simple.c"
+; ModuleID = './tests/simple.ll'
+source_filename = "./tests/simple.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
 ; Function Attrs: noinline nounwind uwtable
 define dso_local i32 @main() #0 {
-  %1 = alloca i32, align 4
-  %2 = alloca i32, align 4
-  %3 = alloca i32, align 4
-  %4 = alloca i32, align 4
-  %5 = alloca i32, align 4
-  %6 = alloca i32, align 4
-  %7 = alloca i32, align 4
-  store i32 0, ptr %1, align 4
-  store i32 0, ptr %2, align 4
-  store i32 1, ptr %3, align 4
-  store i32 0, ptr %4, align 4
-  br label %8
+  br label %1
 
-8:                                                ; preds = %18, %0
-  %9 = load i32, ptr %4, align 4
-  %10 = icmp slt i32 %9, 10
-  br i1 %10, label %11, label %21
+1:                                                ; preds = %3, %0
+  %.0 = phi i32 [ 0, %0 ], [ %4, %3 ]
+  %2 = icmp ult i32 %.0, 10
+  br i1 %2, label %3, label %5
 
-11:                                               ; preds = %8
-  %12 = load i32, ptr %2, align 4
-  %13 = load i32, ptr %3, align 4
-  %14 = add nsw i32 %12, %13
-  store i32 %14, ptr %5, align 4
-  store i32 5, ptr %6, align 4
-  %15 = load i32, ptr %5, align 4
-  %16 = load i32, ptr %6, align 4
-  %17 = mul nsw i32 %15, %16
-  store i32 %17, ptr %7, align 4
-  br label %18
+3:                                                ; preds = %1
+  %4 = add nuw nsw i32 %.0, 1
+  br label %1, !llvm.loop !6
 
-18:                                               ; preds = %11
-  %19 = load i32, ptr %4, align 4
-  %20 = add nsw i32 %19, 1
-  store i32 %20, ptr %4, align 4
-  br label %8, !llvm.loop !6
-
-21:                                               ; preds = %8
+5:                                                ; preds = %1
   ret i32 0
 }
 

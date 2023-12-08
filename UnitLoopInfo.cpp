@@ -20,60 +20,84 @@ UnitLoopInfo UnitLoopAnalysis::run(Function &F, FunctionAnalysisManager &FAM)
 
   UnitLoopInfo Loops;
   // We are using the loop-simplify pass, so the number of back edges = number of loops
-  std::vector<std::pair<BasicBlock*, BasicBlock*>> AllBackEdges;
+  std::vector<std::pair<BasicBlock *, BasicBlock *>> AllBackEdges;
   // Fill in appropriate information
-  for (auto curNode = GraphTraits<DominatorTree *>::nodes_begin(&DT); 
-      curNode != GraphTraits<DominatorTree *>::nodes_end(&DT); ++curNode)
+  for (auto curNode = GraphTraits<DominatorTree *>::nodes_begin(&DT);
+       curNode != GraphTraits<DominatorTree *>::nodes_end(&DT); ++curNode)
   {
     auto curSuccessors = successors(curNode->getBlock());
     // if a node in the successor dominates the current node, then we found a back edge
-    for (auto suc : curSuccessors) {
-      DomTreeNode* successorNode = DT.getNode(suc);
-      if (DT.dominates(successorNode, *curNode)) {
+    for (auto suc : curSuccessors)
+    {
+      DomTreeNode *successorNode = DT.getNode(suc);
+      if (DT.dominates(successorNode, *curNode))
+      {
         auto loopStart = suc;
         auto loopEnd = curNode->getBlock();
         AllBackEdges.push_back({loopEnd, loopStart}); // back edge from end to start
       }
     }
-    
   }
 
   printBackEdgesToDebug(AllBackEdges);
-  for (auto [end, start] : AllBackEdges) {
+  for (auto [end, start] : AllBackEdges)
+  {
     Loop singleLoopInfo = {};
     singleLoopInfo.loopStart = start;
     singleLoopInfo.loopEnd = end;
-    singleLoopInfo.preHeader = DT.getNode(end)->getIDom()->getBlock();
+    // FIXME: double check the definition of preheader
+    singleLoopInfo.preHeader = DT.getNode(end)->getIDom()->getIDom()->getBlock();
     std::set<BasicBlock *> visited = {start};
     std::vector<BasicBlock *> loopBlocks = {start};
     findPred(end, visited, loopBlocks);
-    dbgs() << loopBlocks.size() << "\n";
     singleLoopInfo.blocksInLoop.insert(singleLoopInfo.blocksInLoop.end(), loopBlocks.begin(), loopBlocks.end());
     Loops.allLoopsInFunction.push_back(singleLoopInfo);
   }
 
+  printAllLoops(Loops);
   return Loops;
 }
 
-void UnitLoopAnalysis::findPred(BasicBlock *curNode, std::set<BasicBlock *> &visited, std::vector<BasicBlock *> &path){
-  if (visited.count(curNode)) {
+void UnitLoopAnalysis::findPred(BasicBlock *curNode, std::set<BasicBlock *> &visited, std::vector<BasicBlock *> &path)
+{
+  if (visited.count(curNode))
+  {
     return;
   }
   path.push_back(curNode);
   visited.insert(curNode);
-  for (auto preds : predecessors(curNode)) {
+  for (auto preds : predecessors(curNode))
+  {
     findPred(preds, visited, path);
   }
-
 }
 
-void UnitLoopAnalysis::printBackEdgesToDebug(std::vector<std::pair<BasicBlock*, BasicBlock*>> &BE) {
+void UnitLoopAnalysis::printBackEdgesToDebug(std::vector<std::pair<BasicBlock *, BasicBlock *>> &BE)
+{
   dbgs() << "Back Edges: \n";
-  for (auto [from, to] : BE) {
+  for (auto [from, to] : BE)
+  {
     from->printAsOperand(dbgs(), false);
     dbgs() << " --> ";
     to->printAsOperand(dbgs(), false);
     dbgs() << "\n";
+  }
+}
+
+// After the loop analysis, print out all the loops
+void UnitLoopAnalysis::printAllLoops(UnitLoopInfo &info){
+  dbgs() << "Found " << info.allLoopsInFunction.size() << " loops: \n"; 
+  int i = 1;
+  for (auto &loop : info.allLoopsInFunction) {
+    dbgs() << "  Loop " << i << " preheader: ";
+    loop.preHeader->printAsOperand(dbgs(), false);
+    dbgs() << "\n\t";
+    for (auto &B : loop.blocksInLoop) {
+      B->printAsOperand(dbgs(), false);
+      dbgs() << ", ";
+    }
+    dbgs() << "\n";
+    i++;
   }
 }
 

@@ -39,6 +39,7 @@ public:
 private:
   void findPred(BasicBlock *cur, std::set<BasicBlock *> &visited, std::vector<BasicBlock *> &path);
   void printBackEdgesToDebug(std::vector<std::pair<BasicBlock*, BasicBlock*>> &BE);
+  void printAllLoops(UnitLoopInfo &info);
 };
 } // namespace
 #endif // INCLUDE_UNIT_LOOP_INFO_H
