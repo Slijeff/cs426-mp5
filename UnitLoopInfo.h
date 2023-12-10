@@ -13,9 +13,9 @@ class Loop {
   // - loopEnd has a backedge to loopStart
   // - preHeader is the block right before loopStart
   public:
-  BasicBlock* preHeader = NULL;
-  BasicBlock* loopStart = NULL; 
-  BasicBlock* loopEnd = NULL;
+  BasicBlock* preHeader = nullptr;
+  BasicBlock* loopStart = nullptr;
+  BasicBlock* loopEnd = nullptr;
   std::vector<BasicBlock* > blocksInLoop = {}; 
 };
 class UnitLoopInfo {

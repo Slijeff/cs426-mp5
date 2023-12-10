@@ -34,7 +34,7 @@ UnitLoopInfo UnitLoopAnalysis::run(Function &F, FunctionAnalysisManager &FAM)
       {
         auto loopStart = suc;
         auto loopEnd = curNode->getBlock();
-        AllBackEdges.push_back({loopEnd, loopStart}); // back edge from end to start
+        AllBackEdges.emplace_back(loopEnd, loopStart); // back edge from end to start
       }
     }
   }
