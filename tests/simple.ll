@@ -7,16 +7,18 @@ target triple = "x86_64-pc-linux-gnu"
 define dso_local i32 @main() #0 {
   br label %1
 
-1:                                                ; preds = %3, %0
-  %.0 = phi i32 [ 0, %0 ], [ %4, %3 ]
-  %2 = icmp ult i32 %.0, 10
-  br i1 %2, label %3, label %5
+1:                                                ; preds = %0, %4
+  %.01 = phi i32 [ 0, %0 ], [ %5, %4 ]
+  %2 = add nsw i32 0, 1
+  %3 = mul nsw i32 %2, 5
+  br label %4
 
-3:                                                ; preds = %1
-  %4 = add nuw nsw i32 %.0, 1
-  br label %1, !llvm.loop !6
+4:                                                ; preds = %1
+  %5 = add nsw i32 %.01, 1
+  %6 = icmp slt i32 %5, 10
+  br i1 %6, label %1, label %7, !llvm.loop !6
 
-5:                                                ; preds = %1
+7:                                                ; preds = %4
   ret i32 0
 }
 
