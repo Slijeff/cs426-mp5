@@ -25,7 +25,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
   clearAll();
   CFGWorklist.emplace_back(nullptr, &F.getEntryBlock());
   for (auto &i : instructions(F)) {
-    LatticeMap[dynamic_cast<Value *>(&i)] = Lattice();
+    lattice_map.set(cast<Value>(&i), Lattice(LatticeStatus::TOP, nullptr));
   }
 
   size_t cfgIndex = 0;
@@ -54,28 +54,26 @@ void UnitSCCP::processCFG(size_t cfgIndex) {
 }
 
 void UnitSCCP::visitInstruction(Instruction &i) {
-  auto prevLattice = LatticeMap[dynamic_cast<Value *>(&i)];
+  auto prevLattice = lattice_map.get(cast<Value>(&i));
   auto curLattice = prevLattice;
 
   auto op = i.getOpcode();
   if (op == Instruction::PHI) {
     visitPhi(i, curLattice);
-  }
-  else if (op == Instruction::Br){
+  } else if (op == Instruction::Br) {
     visitBranch(i, curLattice);
-  }
-  else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) ) {
+  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i)) {
     visitUnaryOrBinary(i, curLattice);
   }
 
 }
 
-void UnitSCCP::visitPhi(Instruction &i, Lattice& curStatus) {
+void UnitSCCP::visitPhi(Instruction &i, Lattice &curStatus) {
   dbgs() << "Got Phi node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";
 }
-void UnitSCCP::visitBranch(Instruction &i, Lattice& curStatus) {
+void UnitSCCP::visitBranch(Instruction &i, Lattice &curStatus) {
   dbgs() << "Got Branch node: ";
   i.print(dbgs(), true);
   dbgs() << " | ";
@@ -83,12 +81,12 @@ void UnitSCCP::visitBranch(Instruction &i, Lattice& curStatus) {
   dbgs() << "# conditions: " << i.getNumOperands() << "\n";
   // unconditional branch
   if (i.getNumOperands() == 1) {
-    auto* jmpTo = dyn_cast<BasicBlock>(i.getOperand(0));
+    auto *jmpTo = dyn_cast<BasicBlock>(i.getOperand(0));
     CFGWorklist.emplace_back(i.getParent(), jmpTo);
     return;
   }
 }
-void UnitSCCP::visitUnaryOrBinary(Instruction &i, Lattice& curStatus) {
+void UnitSCCP::visitUnaryOrBinary(Instruction &i, Lattice &curStatus) {
   dbgs() << "Got Unary or Binary node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";

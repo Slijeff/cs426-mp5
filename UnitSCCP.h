@@ -15,13 +15,16 @@ enum LatticeStatus {
 /// The Lattice
 class Lattice {
  public:
-  Lattice() {status = LatticeStatus::TOP; constant = nullptr;};
+  Lattice() {
+    status = LatticeStatus::TOP;
+    constant = nullptr;
+  };
   LatticeStatus status;
   ConstantData *constant;
 
-  explicit Lattice(LatticeStatus s) {
+  explicit Lattice(LatticeStatus s, ConstantData *val) {
     status = s;
-    constant = nullptr;
+    constant = val;
   }
 
   [[nodiscard]] bool isBottom() const { return status == BOTTOM; }
@@ -67,18 +70,34 @@ class Lattice {
 //    }
   }
 };
+
+class LatticeMap {
+ private:
+  std::map<Value *, Lattice> LatticeMap;
+ public:
+  void clear() { LatticeMap.clear(); }
+  Lattice get(Value *key) {
+    if (auto constant = dyn_cast<ConstantData>(key)) {
+      return Lattice(LatticeStatus::CONST, constant);
+    }
+    return LatticeMap[key];
+  }
+  void set(Value *k, Lattice v) {
+    LatticeMap[k] = v;
+  }
+};
 /// Sparse Conditional Constant Propagation Optimization Pass
 struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM);
  private:
-  std::map<Value *, Lattice> LatticeMap;
+  LatticeMap lattice_map;
   std::vector<std::pair<BasicBlock *, BasicBlock *>> CFGWorklist;
   std::vector<Instruction *> SSAWorklist;
   std::set<std::pair<BasicBlock *, BasicBlock *>> Visited;
 
   // Clear all tracking parameters
   void clearAll() {
-    LatticeMap.clear();
+    lattice_map.clear();
     CFGWorklist.clear();
     SSAWorklist.clear();
     Visited.clear();
@@ -87,9 +106,9 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   void processCFG(size_t cfgIndex);
   void processSSA(size_t ssaIndex);
   void visitInstruction(Instruction &i);
-  void visitPhi(Instruction &i, Lattice& curStatus);
-  void visitBranch(Instruction &i, Lattice& curStatus);
-  void visitUnaryOrBinary(Instruction &i, Lattice& curStatus);
+  void visitPhi(Instruction &i, Lattice &curStatus);
+  void visitBranch(Instruction &i, Lattice &curStatus);
+  void visitUnaryOrBinary(Instruction &i, Lattice &curStatus);
  public:
   int NumInstRemoved;
   int NumDeadBlocks;
