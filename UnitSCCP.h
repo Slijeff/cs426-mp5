@@ -19,10 +19,10 @@ class Lattice {
   LatticeStatus status;
   ConstantData *constant;
 
-//  explicit Lattice(LatticeStatus s) {
-//    status = s;
-//    constant = nullptr;
-//  }
+  explicit Lattice(LatticeStatus s) {
+    status = s;
+    constant = nullptr;
+  }
 
   [[nodiscard]] bool isBottom() const { return status == BOTTOM; }
   [[nodiscard]] bool isConst() const { return status == CONST; }
@@ -84,6 +84,12 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
     Visited.clear();
   }
 
+  void processCFG(size_t cfgIndex);
+  void processSSA(size_t ssaIndex);
+  void visitInstruction(Instruction &i);
+  void visitPhi(Instruction &i, Lattice& curStatus);
+  void visitBranch(Instruction &i, Lattice& curStatus);
+  void visitUnaryOrBinary(Instruction &i, Lattice& curStatus);
  public:
   int NumInstRemoved;
   int NumDeadBlocks;
