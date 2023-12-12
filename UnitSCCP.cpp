@@ -74,8 +74,8 @@ void UnitSCCP::visitInstruction(Instruction &i) {
     visitPhi(cast<PHINode>(i), curLattice);
   } else if (isa<BranchInst>(i)) {
     visitBranch(cast<BranchInst>(i), curLattice);
-  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i)) {
-    visitUnaryOrBinary(i, curLattice);
+  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i)) {
+    visitFoldable(i, curLattice);
   } else {
     curLattice.status = LatticeStatus::BOTTOM;
   }
@@ -94,22 +94,32 @@ void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
   dbgs() << "Got Phi node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";
+  const size_t phi_size = i.getNumOperands() / 2;
+  for (size_t idx = 0; idx < phi_size; idx++) {
+    // FIXME: double check it's getting the incoming block
+    auto *prevBB = i.getIncomingBlock(2 * idx + 1);
+    if (Visited.count({prevBB, i.getParent()}) != 0) {
+      auto *op = i.getOperand(idx * 2);
+      auto opStatus = lattice_map.get(op);
+      curStatus ^= opStatus;
+    }
+  }
 }
 void UnitSCCP::visitBranch(BranchInst &i, Lattice &curStatus) {
   dbgs() << "Got Branch node: ";
   i.print(dbgs(), true);
-  dbgs() << " | \n";
+  dbgs() << "\n";
 
 //  dbgs() << "# conditions: " << i.getNumOperands() << "\n";
   // unconditional branch
   if (i.isUnconditional()) {
-    auto *jmpTo = dyn_cast<BasicBlock>(i.getOperand(0));
+    auto *jmpTo = i.getSuccessor(0);
     CFGWorklist.emplace_back(i.getParent(), jmpTo);
     return;
   }
 }
-void UnitSCCP::visitUnaryOrBinary(Instruction &i, Lattice &curStatus) {
-  dbgs() << "Got Unary or Binary node: ";
+void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
+  dbgs() << "Got Foldable node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";
 }

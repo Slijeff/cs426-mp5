@@ -108,7 +108,7 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   void visitInstruction(Instruction &i);
   void visitPhi(PHINode &i, Lattice &curStatus);
   void visitBranch(BranchInst &i, Lattice &curStatus);
-  void visitUnaryOrBinary(Instruction &i, Lattice &curStatus);
+  void visitFoldable(Instruction &i, Lattice &curStatus);
  public:
   int NumInstRemoved;
   int NumDeadBlocks;
