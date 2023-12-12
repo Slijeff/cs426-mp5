@@ -106,8 +106,8 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   void processCFG(size_t cfgIndex);
   void processSSA(size_t ssaIndex);
   void visitInstruction(Instruction &i);
-  void visitPhi(Instruction &i, Lattice &curStatus);
-  void visitBranch(Instruction &i, Lattice &curStatus);
+  void visitPhi(PHINode &i, Lattice &curStatus);
+  void visitBranch(BranchInst &i, Lattice &curStatus);
   void visitUnaryOrBinary(Instruction &i, Lattice &curStatus);
  public:
   int NumInstRemoved;

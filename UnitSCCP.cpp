@@ -1,5 +1,6 @@
 // Usage: opt -load-pass-plugin=libUnitProject.so -passes="unit-sccp"
 #include <llvm/IR/InstrTypes.h>
+#include "llvm/IR/Instructions.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/InstIterator.h"
@@ -53,34 +54,55 @@ void UnitSCCP::processCFG(size_t cfgIndex) {
   }
 }
 
+void UnitSCCP::processSSA(size_t ssaIndex) {
+  dbgs() << "processing ssa at index: " << ssaIndex << "\n";
+  auto *instruction = SSAWorklist[ssaIndex];
+  auto *BB = instruction->getParent();
+  for (auto pred : predecessors(BB)) {
+    if (Visited.count({pred, BB}) != 0) {
+      visitInstruction(*instruction);
+      break;
+    }
+  }
+}
+
 void UnitSCCP::visitInstruction(Instruction &i) {
-  auto prevLattice = lattice_map.get(cast<Value>(&i));
+  auto prevLattice = lattice_map.get(&i);
   auto curLattice = prevLattice;
 
-  auto op = i.getOpcode();
-  if (op == Instruction::PHI) {
-    visitPhi(i, curLattice);
-  } else if (op == Instruction::Br) {
-    visitBranch(i, curLattice);
+  if (isa<PHINode>(i)) {
+    visitPhi(cast<PHINode>(i), curLattice);
+  } else if (isa<BranchInst>(i)) {
+    visitBranch(cast<BranchInst>(i), curLattice);
   } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i)) {
     visitUnaryOrBinary(i, curLattice);
+  } else {
+    curLattice.status = LatticeStatus::BOTTOM;
+  }
+
+  if (prevLattice != curLattice) {
+    lattice_map.set(&i, curLattice);
+    for (auto use : i.users()) {
+      auto* user_inst = dyn_cast<Instruction>(use);
+      SSAWorklist.push_back(user_inst);
+    }
   }
 
 }
 
-void UnitSCCP::visitPhi(Instruction &i, Lattice &curStatus) {
+void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
   dbgs() << "Got Phi node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";
 }
-void UnitSCCP::visitBranch(Instruction &i, Lattice &curStatus) {
+void UnitSCCP::visitBranch(BranchInst &i, Lattice &curStatus) {
   dbgs() << "Got Branch node: ";
   i.print(dbgs(), true);
-  dbgs() << " | ";
+  dbgs() << " | \n";
 
-  dbgs() << "# conditions: " << i.getNumOperands() << "\n";
+//  dbgs() << "# conditions: " << i.getNumOperands() << "\n";
   // unconditional branch
-  if (i.getNumOperands() == 1) {
+  if (i.isUnconditional()) {
     auto *jmpTo = dyn_cast<BasicBlock>(i.getOperand(0));
     CFGWorklist.emplace_back(i.getParent(), jmpTo);
     return;
