@@ -1,18 +1,12 @@
 // Usage: opt -load-pass-plugin=libUnitProject.so -passes="unit-sccp"
 #include <llvm/IR/InstrTypes.h>
-#include <iostream>
 #include "llvm/IR/Instructions.h"
 #include "llvm/ADT/Statistic.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/InstIterator.h"
 #include "UnitSCCP.h"
 
 //#define DEBUG_TYPE UnitSCCP
 #define DEBUG_TYPE "UnitSCCP"
-// Define any statistics here
-//STATISTIC(NumInstRemoved, "Number of instructions removed");
-//STATISTIC(NumDeadBlocks, "Number of basic blocks unreachable");
-//STATISTIC(NumInstReplaced, "Number of instructions replaced with (simpler) instructions");
 
 using namespace llvm;
 using namespace cs426;
@@ -20,7 +14,7 @@ using namespace cs426;
 /// Main function for running the SCCP optimization
 PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
   dbgs() << "UnitSCCP running on " << F.getName() << "\n";
-
+  if (F.isDeclaration()) return PreservedAnalyses::all();
   // Perform the optimization
 
   // Initialization Phase
@@ -76,7 +70,7 @@ void UnitSCCP::visitInstruction(Instruction &i) {
   if (isa<PHINode>(i)) {
     visitPhi(cast<PHINode>(i), curLattice);
   } else if (isa<BranchInst>(i)) {
-    visitBranch(cast<BranchInst>(i), curLattice);
+    visitBranch(cast<BranchInst>(i));
   } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i)) {
     visitFoldable(i, curLattice);
   } else {
@@ -100,7 +94,6 @@ void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
 //  const size_t phi_size = i.getNumOperands() / 2;
   const size_t phi_size = i.getNumIncomingValues();
   for (size_t idx = 0; idx < phi_size; idx++) {
-    // FIXME: double check it's getting the incoming block
 //    auto *prevBB = i.getIncomingBlock(2 * idx + 1);
     auto *prevBB = i.getIncomingBlock(idx);
     if (Visited.count({prevBB, i.getParent()}) != 0) {
@@ -111,7 +104,7 @@ void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
     }
   }
 }
-void UnitSCCP::visitBranch(BranchInst &i, Lattice &curStatus) {
+void UnitSCCP::visitBranch(BranchInst &i) {
   dbgs() << "Got Branch node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";
@@ -142,39 +135,25 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
   i.print(dbgs(), true);
   dbgs() << "\n";
 
-  Constant *folded;
+  Constant *folded = nullptr;
   if (isa<CmpInst>(i)) {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
-//    dbgs() << "Found COMPARE INST: \n";
-//    i.printAsOperand(dbgs());
-//    dbgs() << "Got e1 = " << e1 << "\n";
-//    dbgs() << "Got e2 = " << e2 << "\n";
     if (e1 != nullptr && e2 != nullptr) {
       folded = calculateCompare(cast<CmpInst>(i), e1, e2);
-      if (folded == nullptr) return;
-//      dbgs() << "Calculated Compare to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
-      dyn_cast<ConstantInt>(folded)->print(dbgs());
-      curStatus.constant = cast<ConstantData>(folded);
-      curStatus.status = LatticeStatus::CONST;
-      return;
     }
   } else if (isa<BinaryOperator>(i)) {
-//    dbgs() << "BinaryOp num operands: " << i.getNumOperands() << "\n";
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
     if (e1 != nullptr && e2 != nullptr) {
-//      dbgs() << "Found BINARY OP INST: \n";
-//      i.printAsOperand(dbgs());
-//      dbgs() << "Got e1 = " << dyn_cast<ConstantInt>(e1)->getValue() <<"\n";
-//      dbgs() << "Got e2 = " << dyn_cast<ConstantInt>(e2)->getValue() <<"\n";
       folded = calculateBinaryOp(i, e1, e2);
-      if (folded == nullptr) return;
-//      dbgs() << "Calculated Number to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
-      curStatus.constant = cast<ConstantData>(folded);
-      curStatus.status = LatticeStatus::CONST;
-      return;
     }
+  }
+
+  if (folded != nullptr) {
+    curStatus.constant = cast<ConstantData>(folded);
+    curStatus.status = LatticeStatus::CONST;
+    return;
   }
 
   curStatus.status = LatticeStatus::TOP;
@@ -192,15 +171,13 @@ ConstantData *UnitSCCP::calculateBinaryOp(Instruction &inst, ConstantData *e1, C
   auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
   auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
 
-  auto getIntType = [e1]() -> llvm::IntegerType * { return dyn_cast<ConstantInt>(e1)->getType(); };
-  auto getFPType = [e1]() -> llvm::Type * { return dyn_cast<ConstantFP>(e1)->getType(); };
-
+  auto resType = inst.getType();
   switch (op) {
-    case Instruction::Add:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) + toAPInt(e2)));
-    case Instruction::Sub:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) - toAPInt(e2)));
-    case Instruction::SDiv:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1).sdiv(toAPInt(e2))));
-    case Instruction::UDiv:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1).udiv(toAPInt(e2))));
-    case Instruction::Mul:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) * toAPInt(e2)));
+    case Instruction::Add:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) + toAPInt(e2)));
+    case Instruction::Sub:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) - toAPInt(e2)));
+    case Instruction::SDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).sdiv(toAPInt(e2))));
+    case Instruction::UDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).udiv(toAPInt(e2))));
+    case Instruction::Mul:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) * toAPInt(e2)));
     default:return nullptr;
   }
 }
@@ -210,9 +187,10 @@ ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, Consta
   auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
   auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
 
+  auto resType = inst.getType();
   switch (op) {
-    case CmpInst::ICMP_EQ:return cast<ConstantData>(ConstantInt::get(inst.getType(), toAPInt(e1) == toAPInt(e2)));
-    case CmpInst::ICMP_SLT:return cast<ConstantData>(ConstantInt::get(inst.getType(), toAPInt(e1).slt(toAPInt(e2))));
+    case CmpInst::ICMP_EQ:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) == toAPInt(e2)));
+    case CmpInst::ICMP_SLT:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).slt(toAPInt(e2))));
     default: return nullptr;
   }
 }

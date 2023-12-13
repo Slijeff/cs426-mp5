@@ -115,11 +115,11 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   void processSSA(size_t ssaIndex);
   void visitInstruction(Instruction &i);
   void visitPhi(PHINode &i, Lattice &curStatus);
-  void visitBranch(BranchInst &i, Lattice &curStatus);
+  void visitBranch(BranchInst &i);
   void visitFoldable(Instruction &i, Lattice &curStatus);
 
-  ConstantData *calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2);
-  ConstantData *calculateBinaryOp(Instruction &inst, ConstantData *e1, ConstantData *e2);
+  static ConstantData *calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2);
+  static ConstantData *calculateBinaryOp(Instruction &inst, ConstantData *e1, ConstantData *e2);
   ConstantData *calculateUnaryOp(Instruction &inst, ConstantData &e);
 
   // Replace constants according to SCCP
@@ -127,9 +127,9 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   void eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, BasicBlock *invalid);
 
  public:
-  int NumInstRemoved;
-  int NumDeadBlocks;
-  int NumInstReplaced;
+  size_t NumInstRemoved;
+  size_t NumDeadBlocks;
+  size_t NumInstReplaced;
 };
 } // namespace
 
