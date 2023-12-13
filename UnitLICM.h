@@ -8,6 +8,11 @@ namespace cs426 {
 /// Loop Invariant Code Motion Optimization Pass
 struct UnitLICM : PassInfoMixin<UnitLICM> {
   PreservedAnalyses run(Function& F, FunctionAnalysisManager& FAM);
+
+public:
+  int NumHoistedStores;
+  int NumHoistedLoads;
+  int NumHoistedComputationalInst;
 };
 } // namespace
 
