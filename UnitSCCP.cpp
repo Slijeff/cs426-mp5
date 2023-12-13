@@ -39,6 +39,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
   }
 
   dbgs() << lattice_map;
+  replaceConsts(F);
   // Set proper preserved analyses
   return PreservedAnalyses::all();
 }
@@ -96,12 +97,15 @@ void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
   dbgs() << "Got Phi node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";
-  const size_t phi_size = i.getNumOperands() / 2;
+//  const size_t phi_size = i.getNumOperands() / 2;
+  const size_t phi_size = i.getNumIncomingValues();
   for (size_t idx = 0; idx < phi_size; idx++) {
     // FIXME: double check it's getting the incoming block
-    auto *prevBB = i.getIncomingBlock(2 * idx + 1);
+//    auto *prevBB = i.getIncomingBlock(2 * idx + 1);
+    auto *prevBB = i.getIncomingBlock(idx);
     if (Visited.count({prevBB, i.getParent()}) != 0) {
-      auto *op = i.getOperand(idx * 2);
+//      auto *op = i.getOperand(idx * 2);
+      auto *op = i.getOperand(idx);
       auto opStatus = lattice_map.get(op);
       curStatus ^= opStatus;
     }
@@ -142,12 +146,15 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
   if (isa<CmpInst>(i)) {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
+//    dbgs() << "Found COMPARE INST: \n";
+//    i.printAsOperand(dbgs());
 //    dbgs() << "Got e1 = " << e1 << "\n";
 //    dbgs() << "Got e2 = " << e2 << "\n";
     if (e1 != nullptr && e2 != nullptr) {
       folded = calculateCompare(cast<CmpInst>(i), e1, e2);
       if (folded == nullptr) return;
-      dbgs() << "Calculated Compare to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
+//      dbgs() << "Calculated Compare to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
+      dyn_cast<ConstantInt>(folded)->print(dbgs());
       curStatus.constant = cast<ConstantData>(folded);
       curStatus.status = LatticeStatus::CONST;
       return;
@@ -157,11 +164,13 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
     if (e1 != nullptr && e2 != nullptr) {
+//      dbgs() << "Found BINARY OP INST: \n";
+//      i.printAsOperand(dbgs());
 //      dbgs() << "Got e1 = " << dyn_cast<ConstantInt>(e1)->getValue() <<"\n";
 //      dbgs() << "Got e2 = " << dyn_cast<ConstantInt>(e2)->getValue() <<"\n";
       folded = calculateBinaryOp(i, e1, e2);
       if (folded == nullptr) return;
-      dbgs() << "Calculated Number to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
+//      dbgs() << "Calculated Number to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
       curStatus.constant = cast<ConstantData>(folded);
       curStatus.status = LatticeStatus::CONST;
       return;
@@ -172,6 +181,7 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
   for (auto &op : i.operands()) {
     if (lattice_map.get(op).isBottom()) {
       curStatus.status = LatticeStatus::BOTTOM;
+      curStatus.constant = nullptr;
       return;
     }
   }
@@ -200,14 +210,50 @@ ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, Consta
   auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
   auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
 
-  auto getIntType = [e1]() -> llvm::IntegerType * { return dyn_cast<ConstantInt>(e1)->getType(); };
-  auto getFPType = [e1]() -> llvm::Type * { return dyn_cast<ConstantFP>(e1)->getType(); };
-
   switch (op) {
-    case CmpInst::ICMP_EQ:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) == toAPInt(e2)));
-    case CmpInst::ICMP_SLT:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1).slt(toAPInt(e2))));
+    case CmpInst::ICMP_EQ:return cast<ConstantData>(ConstantInt::get(inst.getType(), toAPInt(e1) == toAPInt(e2)));
+    case CmpInst::ICMP_SLT:return cast<ConstantData>(ConstantInt::get(inst.getType(), toAPInt(e1).slt(toAPInt(e2))));
     default: return nullptr;
   }
+}
+void UnitSCCP::replaceConsts(Function &F) {
+  dbgs() << "Replacing constants...\n";
+  std::vector<Instruction *> remove;
+  for (auto &i : instructions(F)) {
+    if (auto constant = lattice_map.get(&i).constant) {
+      NumInstReplaced += i.getNumUses();
+      i.replaceAllUsesWith(constant);
+      remove.push_back(&i);
+    }
+  }
+  NumInstRemoved += remove.size();
+  for (auto i : remove) i->removeFromParent();
+
+  for (auto &BB : F) {
+    auto *brInst = dyn_cast<BranchInst>(BB.getTerminator());
+    if (brInst == nullptr || brInst->isUnconditional()) continue;
+    auto *condition = dyn_cast<ConstantInt>(brInst->getOperand(0));
+    if (condition == nullptr) continue;
+    auto thenBB = brInst->getSuccessor(0);
+    auto elseBB = brInst->getSuccessor(1);
+    if (condition->getValue() != 0) {
+      eliminateConditionBranch(brInst, thenBB, elseBB);
+    } else {
+      eliminateConditionBranch(brInst, elseBB, thenBB);
+    }
+  }
+
+  dbgs() << "NumInstRemoved: " << NumInstRemoved << " | NumInstReplaced: " << NumInstReplaced
+         << " | NumDeadBlocks: " << NumDeadBlocks << "\n";
+}
+void UnitSCCP::eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, BasicBlock *invalid) {
+  BranchInst::Create(jmp, inst);
+  inst->removeFromParent();
+  if (jmp == invalid) {
+    return;
+  }
+  NumDeadBlocks++;
+  invalid->removeFromParent();
 }
 
 

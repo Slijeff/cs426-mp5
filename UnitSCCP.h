@@ -8,9 +8,9 @@ using namespace llvm;
 
 namespace cs426 {
 enum LatticeStatus {
-  BOTTOM,
-  CONST,
-  TOP
+  BOTTOM = 0,
+  CONST = 1,
+  TOP = 2
 };
 /// The Lattice
 class Lattice {
@@ -35,17 +35,8 @@ class Lattice {
     if (status != other.status) return true;
     else if (status != CONST) return false;
     else {
-      return constant != other.constant;
+      return !constant->isElementWiseEqual(other.constant);
     }
-//    else if (reinterpret_cast<ConstantInt *>(constant) != nullptr) {
-//      APInt x = reinterpret_cast<ConstantInt *>(constant)->getValue();
-//      APInt y = reinterpret_cast<ConstantInt *>(other.constant)->getValue();
-//      return x != y;
-//    } else if (reinterpret_cast<ConstantFP *>(constant) != nullptr) {
-//      APFloat x = reinterpret_cast<ConstantFP *>(constant)->getValue();
-//      APFloat y = reinterpret_cast<ConstantFP *>(other.constant)->getValue();
-//      return x != y;
-//    }
 
     dbgs() << "shouldn't get here!\n";
     return false;
@@ -56,18 +47,13 @@ class Lattice {
       status = other.status;
       constant = other.constant;
     } else {
-      if (constant == other.constant) return;
-      status = BOTTOM;
-      constant = nullptr;
+      if (status == other.status && status == LatticeStatus::CONST) {
+        if (!constant->isElementWiseEqual(other.constant)) {
+          status = LatticeStatus::BOTTOM;
+          constant = nullptr;
+        }
+      }
     }
-//    else if (status == other.status && status == CONST) {
-//      auto x = dynamic_cast<Value *>(constant);
-//      auto y = dynamic_cast<Value *>(other.constant);
-//      if (x != y) {
-//        status = LatticeStatus::BOTTOM;
-//        constant = nullptr;
-//      }
-//    }
   }
 
   friend llvm::raw_ostream &operator<<(llvm::raw_ostream &output, Lattice const &lattice) {
@@ -135,6 +121,11 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   ConstantData *calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2);
   ConstantData *calculateBinaryOp(Instruction &inst, ConstantData *e1, ConstantData *e2);
   ConstantData *calculateUnaryOp(Instruction &inst, ConstantData &e);
+
+  // Replace constants according to SCCP
+  void replaceConsts(Function &F);
+  void eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, BasicBlock *invalid);
+
  public:
   int NumInstRemoved;
   int NumDeadBlocks;
