@@ -27,7 +27,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
   clearAll();
   CFGWorklist.emplace_back(nullptr, &F.getEntryBlock());
   for (auto &i : instructions(F)) {
-    lattice_map.set(cast<Value>(&i), Lattice(LatticeStatus::TOP, nullptr));
+    lattice_map.set(&i, Lattice(LatticeStatus::TOP, nullptr));
   }
 
   size_t cfgIndex = 0;
@@ -45,7 +45,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
 
 // Process an item in the CFG worklist
 void UnitSCCP::processCFG(size_t cfgIndex) {
-  dbgs() << "processing cfg at index: " << cfgIndex << "\n";
+//  dbgs() << "processing cfg at index: " << cfgIndex << "\n";
   auto [prevBB, curBB] = CFGWorklist[cfgIndex];
   // we only iterate every edge once
   if (Visited.count({prevBB, curBB}) != 0) return;
@@ -57,7 +57,7 @@ void UnitSCCP::processCFG(size_t cfgIndex) {
 }
 
 void UnitSCCP::processSSA(size_t ssaIndex) {
-  dbgs() << "processing ssa at index: " << ssaIndex << "\n";
+//  dbgs() << "processing ssa at index: " << ssaIndex << "\n";
   auto *instruction = SSAWorklist[ssaIndex];
   auto *BB = instruction->getParent();
   for (auto pred : predecessors(BB)) {
@@ -85,7 +85,7 @@ void UnitSCCP::visitInstruction(Instruction &i) {
   if (prevLattice != curLattice) {
     lattice_map.set(&i, curLattice);
     for (auto use : i.users()) {
-      auto* user_inst = dyn_cast<Instruction>(use);
+      auto *user_inst = dyn_cast<Instruction>(use);
       SSAWorklist.push_back(user_inst);
     }
   }
@@ -112,20 +112,102 @@ void UnitSCCP::visitBranch(BranchInst &i, Lattice &curStatus) {
   i.print(dbgs(), true);
   dbgs() << "\n";
 
-//  dbgs() << "# conditions: " << i.getNumOperands() << "\n";
+//  dbgs() << "# ops: " << i.getNumOperands() << "\n";
   // unconditional branch
   if (i.isUnconditional()) {
     auto *jmpTo = i.getSuccessor(0);
     CFGWorklist.emplace_back(i.getParent(), jmpTo);
     return;
   }
-  auto *thenBB = i.getSuccessor(1);
-  auto *elseBB = i.getSuccessor(2);
+  auto *thenBB = i.getSuccessor(0);
+  auto *elseBB = i.getSuccessor(1);
+  if (lattice_map.get(i.getOperand(0)).constant != nullptr) {
+    auto *condition = dyn_cast<ConstantInt>(lattice_map.get(i.getOperand(0)).constant);
+    if (condition != nullptr) {
+      condition->getValue() == 0 ? CFGWorklist.emplace_back(i.getParent(), elseBB)
+                                 : CFGWorklist.emplace_back(i.getParent(), thenBB);
+    }
+  } else {
+    CFGWorklist.emplace_back(i.getParent(), elseBB);
+    CFGWorklist.emplace_back(i.getParent(), thenBB);
+  }
+
 }
 void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
   dbgs() << "Got Foldable node: ";
   i.print(dbgs(), true);
   dbgs() << "\n";
+
+  Constant *folded;
+  if (isa<CmpInst>(i)) {
+    auto *e1 = lattice_map.get(i.getOperand(0)).constant;
+    auto *e2 = lattice_map.get(i.getOperand(1)).constant;
+//    dbgs() << "Got e1 = " << e1 << "\n";
+//    dbgs() << "Got e2 = " << e2 << "\n";
+    if (e1 != nullptr && e2 != nullptr) {
+      folded = calculateCompare(cast<CmpInst>(i), e1, e2);
+      if (folded == nullptr) return;
+      dbgs() << "Calculated Compare to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
+      curStatus.constant = cast<ConstantData>(folded);
+      curStatus.status = LatticeStatus::CONST;
+      return;
+    }
+  } else if (isa<BinaryOperator>(i)) {
+//    dbgs() << "BinaryOp num operands: " << i.getNumOperands() << "\n";
+    auto *e1 = lattice_map.get(i.getOperand(0)).constant;
+    auto *e2 = lattice_map.get(i.getOperand(1)).constant;
+    if (e1 != nullptr && e2 != nullptr) {
+//      dbgs() << "Got e1 = " << dyn_cast<ConstantInt>(e1)->getValue() <<"\n";
+//      dbgs() << "Got e2 = " << dyn_cast<ConstantInt>(e2)->getValue() <<"\n";
+      folded = calculateBinaryOp(i, e1, e2);
+      if (folded == nullptr) return;
+      dbgs() << "Calculated Number to be: " << dyn_cast<ConstantInt>(folded)->getValue() << "\n";
+      curStatus.constant = cast<ConstantData>(folded);
+      curStatus.status = LatticeStatus::CONST;
+      return;
+    }
+  }
+
+  curStatus.status = LatticeStatus::TOP;
+  for (auto &op : i.operands()) {
+    if (lattice_map.get(op).isBottom()) {
+      curStatus.status = LatticeStatus::BOTTOM;
+      return;
+    }
+  }
+}
+ConstantData *UnitSCCP::calculateBinaryOp(Instruction &inst, ConstantData *e1, ConstantData *e2) {
+  auto op = inst.getOpcode();
+
+  auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
+  auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
+
+  auto getIntType = [e1]() -> llvm::IntegerType * { return dyn_cast<ConstantInt>(e1)->getType(); };
+  auto getFPType = [e1]() -> llvm::Type * { return dyn_cast<ConstantFP>(e1)->getType(); };
+
+  switch (op) {
+    case Instruction::Add:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) + toAPInt(e2)));
+    case Instruction::Sub:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) - toAPInt(e2)));
+    case Instruction::SDiv:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1).sdiv(toAPInt(e2))));
+    case Instruction::UDiv:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1).udiv(toAPInt(e2))));
+    case Instruction::Mul:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) * toAPInt(e2)));
+    default:return nullptr;
+  }
+}
+ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2) {
+  auto op = inst.getPredicate();
+
+  auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
+  auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
+
+  auto getIntType = [e1]() -> llvm::IntegerType * { return dyn_cast<ConstantInt>(e1)->getType(); };
+  auto getFPType = [e1]() -> llvm::Type * { return dyn_cast<ConstantFP>(e1)->getType(); };
+
+  switch (op) {
+    case CmpInst::ICMP_EQ:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1) == toAPInt(e2)));
+    case CmpInst::ICMP_SLT:return cast<ConstantData>(ConstantInt::get(getIntType(), toAPInt(e1).slt(toAPInt(e2))));
+    default: return nullptr;
+  }
 }
 
 

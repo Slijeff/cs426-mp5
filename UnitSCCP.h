@@ -70,20 +70,19 @@ class Lattice {
 //    }
   }
 
-  friend llvm::raw_ostream& operator<<(llvm::raw_ostream& output, Lattice const &lattice){
+  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &output, Lattice const &lattice) {
     std::string lat;
     switch (lattice.status) {
-      case BOTTOM:
-        lat = "BOTTOM";
+      case BOTTOM:lat = "BOTTOM";
         break;
       case CONST:
         lat = "CONST";
+        lattice.constant->printAsOperand(output, false);
         break;
-      case TOP:
-        lat = "TOP";
+      case TOP:lat = "TOP";
         break;
     }
-    return output << "[Lattice: " << lat << "]";
+    return output << " [Lattice: " << lat << "]";
   }
 };
 
@@ -101,9 +100,10 @@ class LatticeMap {
   void set(Value *k, Lattice v) {
     lattice_map_[k] = v;
   }
-  friend llvm::raw_ostream& operator<<(llvm::raw_ostream& output, LatticeMap const &LM) {
-    for (auto [k,v] : LM.lattice_map_) {
-      output << v << "\n";
+  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &output, LatticeMap const &LM) {
+    for (auto [k, v] : LM.lattice_map_) {
+      k->printAsOperand(output, false);
+      output << " --> " << v << "\n";
     }
     return output;
   }
@@ -131,6 +131,10 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   void visitPhi(PHINode &i, Lattice &curStatus);
   void visitBranch(BranchInst &i, Lattice &curStatus);
   void visitFoldable(Instruction &i, Lattice &curStatus);
+
+  ConstantData *calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2);
+  ConstantData *calculateBinaryOp(Instruction &inst, ConstantData *e1, ConstantData *e2);
+  ConstantData *calculateUnaryOp(Instruction &inst, ConstantData &e);
  public:
   int NumInstRemoved;
   int NumDeadBlocks;
