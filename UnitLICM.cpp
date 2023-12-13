@@ -1,4 +1,5 @@
 // Usage: opt -load-pass-plugin=libUnitProject.so -passes="unit-licm"
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "UnitLICM.h"
@@ -16,7 +17,7 @@ PreservedAnalyses UnitLICM::run(Function& F, FunctionAnalysisManager& FAM) {
   // Acquires the UnitLoopInfo object constructed by your Loop Identification
   // (LoopAnalysis) pass
   UnitLoopInfo &Loops = FAM.getResult<UnitLoopAnalysis>(F);
-
+  AAResults &AA = FAM.getResult<AAManager>(F);
   // Perform the optimization
 
   // Set proper preserved analyses
