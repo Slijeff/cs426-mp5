@@ -69,21 +69,43 @@ class Lattice {
 //      }
 //    }
   }
+
+  friend llvm::raw_ostream& operator<<(llvm::raw_ostream& output, Lattice const &lattice){
+    std::string lat;
+    switch (lattice.status) {
+      case BOTTOM:
+        lat = "BOTTOM";
+        break;
+      case CONST:
+        lat = "CONST";
+        break;
+      case TOP:
+        lat = "TOP";
+        break;
+    }
+    return output << "[Lattice: " << lat << "]";
+  }
 };
 
 class LatticeMap {
  private:
-  std::map<Value *, Lattice> LatticeMap;
+  std::map<Value *, Lattice> lattice_map_;
  public:
-  void clear() { LatticeMap.clear(); }
+  void clear() { lattice_map_.clear(); }
   Lattice get(Value *key) {
     if (auto constant = dyn_cast<ConstantData>(key)) {
       return Lattice(LatticeStatus::CONST, constant);
     }
-    return LatticeMap[key];
+    return lattice_map_[key];
   }
   void set(Value *k, Lattice v) {
-    LatticeMap[k] = v;
+    lattice_map_[k] = v;
+  }
+  friend llvm::raw_ostream& operator<<(llvm::raw_ostream& output, LatticeMap const &LM) {
+    for (auto [k,v] : LM.lattice_map_) {
+      output << v << "\n";
+    }
+    return output;
   }
 };
 /// Sparse Conditional Constant Propagation Optimization Pass

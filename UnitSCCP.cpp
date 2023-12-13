@@ -1,5 +1,6 @@
 // Usage: opt -load-pass-plugin=libUnitProject.so -passes="unit-sccp"
 #include <llvm/IR/InstrTypes.h>
+#include <iostream>
 #include "llvm/IR/Instructions.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/raw_ostream.h"
@@ -37,6 +38,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
     while (ssaIndex < SSAWorklist.size()) processSSA(ssaIndex++);
   }
 
+  dbgs() << lattice_map;
   // Set proper preserved analyses
   return PreservedAnalyses::all();
 }
@@ -117,6 +119,8 @@ void UnitSCCP::visitBranch(BranchInst &i, Lattice &curStatus) {
     CFGWorklist.emplace_back(i.getParent(), jmpTo);
     return;
   }
+  auto *thenBB = i.getSuccessor(1);
+  auto *elseBB = i.getSuccessor(2);
 }
 void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
   dbgs() << "Got Foldable node: ";
