@@ -32,7 +32,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
     while (ssaIndex < SSAWorklist.size()) processSSA(ssaIndex++);
   }
 
-  dbgs() << lattice_map;
+//  dbgs() << lattice_map;
   replaceConsts(F);
   // Set proper preserved analyses
   return PreservedAnalyses::all();
@@ -88,9 +88,9 @@ void UnitSCCP::visitInstruction(Instruction &i) {
 }
 
 void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
-  dbgs() << "Got Phi node: ";
-  i.print(dbgs(), true);
-  dbgs() << "\n";
+//  dbgs() << "Got Phi node: ";
+//  i.print(dbgs(), true);
+//  dbgs() << "\n";
 //  const size_t phi_size = i.getNumOperands() / 2;
   const size_t phi_size = i.getNumIncomingValues();
   for (size_t idx = 0; idx < phi_size; idx++) {
@@ -105,9 +105,9 @@ void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
   }
 }
 void UnitSCCP::visitBranch(BranchInst &i) {
-  dbgs() << "Got Branch node: ";
-  i.print(dbgs(), true);
-  dbgs() << "\n";
+//  dbgs() << "Got Branch node: ";
+//  i.print(dbgs(), true);
+//  dbgs() << "\n";
 
 //  dbgs() << "# ops: " << i.getNumOperands() << "\n";
   // unconditional branch
@@ -131,9 +131,9 @@ void UnitSCCP::visitBranch(BranchInst &i) {
 
 }
 void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
-  dbgs() << "Got Foldable node: ";
-  i.print(dbgs(), true);
-  dbgs() << "\n";
+//  dbgs() << "Got Foldable node: ";
+//  i.print(dbgs(), true);
+//  dbgs() << "\n";
 
   Constant *folded = nullptr;
   if (isa<CmpInst>(i)) {
@@ -264,7 +264,6 @@ void UnitSCCP::eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, Basic
     return;
   }
   NumDeadBlocks++;
-  invalid->removeFromParent();
 }
 
 
