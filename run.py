@@ -40,10 +40,14 @@ def compile_sccp_official():
     opt_files = [os.path.join(Config.sccp_output_dir, os.path.splitext(file)[0] + '_opt.ll') for file in
                  os.listdir(Config.official_ll_output_dir) if file.endswith('.ll')]
 
+    exclude = ["partialsums", "recursive"]
+    outfile = open(os.path.join(Config.sccp_output_dir, "output.txt"), "w")
     for fro, to in zip(unopt_files, opt_files):
+        if any([excl in fro for excl in exclude]):
+            continue
         subprocess.run(
-            ['opt-15', '-load-pass-plugin=./build/libUnitProject.so', '-passes="unit-sccp"', fro, '-S', '-o', to],
-            shell=True)
+            ['opt-15', '-load-pass-plugin=./build/libUnitProject.so', '-passes=unit-sccp', fro, '-S', '-o', to], stderr=outfile)
+    outfile.close()
 
 
 def main():
@@ -59,7 +63,7 @@ def main():
     if function_name == 'compile-sccp':
         compile_sccp_official()
     elif function_name == 'clean':
-        subprocess.run(["rm -rf " + Config.clean_opt_output + "/*"], shell=True)
+        subprocess.run(["rm -rf ./sccp_output/*"], shell=True)
     else:
         print(f"Unknown function: {function_name}")
 
