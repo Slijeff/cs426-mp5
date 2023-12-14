@@ -148,6 +148,11 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     if (e1 != nullptr && e2 != nullptr) {
       folded = calculateBinaryOp(cast<BinaryOperator>(i), e1, e2);
     }
+  } else {
+    auto *e1 = lattice_map.get(i.getOperand(0)).constant;
+    if (e1 != nullptr) {
+      folded = calculateUnaryOp(cast<UnaryOperator>(i), e1);
+    }
   }
 
   if (folded != nullptr) {
@@ -165,6 +170,18 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     }
   }
 }
+ConstantData *UnitSCCP::calculateUnaryOp(UnaryOperator &inst, ConstantData *e) {
+  auto op = inst.getOpcode();
+
+  auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
+  auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
+
+  auto resType = inst.getType();
+  switch (op) {
+    case Instruction::FNeg: return cast<ConstantData>(ConstantFP::get(resType, neg(toAPFloat(e))));
+    default:return nullptr;
+  }
+}
 ConstantData *UnitSCCP::calculateBinaryOp(BinaryOperator &inst, ConstantData *e1, ConstantData *e2) {
   auto op = inst.getOpcode();
 
@@ -180,6 +197,12 @@ ConstantData *UnitSCCP::calculateBinaryOp(BinaryOperator &inst, ConstantData *e1
     case Instruction::Mul:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) * toAPInt(e2)));
     case Instruction::SRem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).srem(toAPInt(e2))));
     case Instruction::URem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).urem(toAPInt(e2))));
+    case Instruction::Shl:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).shl(toAPInt(e2))));
+    case Instruction::LShr:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).lshr(toAPInt(e2))));
+    case Instruction::AShr:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).ashr(toAPInt(e2))));
+    case Instruction::And:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) & (toAPInt(e2))));
+    case Instruction::Or:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) | (toAPInt(e2))));
+    case Instruction::Xor:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) ^ (toAPInt(e2))));
 
     case Instruction::FAdd:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) + toAPFloat(e2)));
     case Instruction::FSub:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) - toAPFloat(e2)));
