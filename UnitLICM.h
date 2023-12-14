@@ -28,7 +28,7 @@ struct UnitLICM : PassInfoMixin<UnitLICM> {
 
   void BuildUseDefInstMap(Function& F);
   bool checkIsInstructionInLoop(Instruction *I, Loop loop);
-  void hoistInstruction(Instruction &I, Loop loop);
+  void hoistInstruction(Instruction *I, Loop loop);
 public:
   std::map<Instruction *, std::vector<Instruction *>> UseDefInstMap;
 

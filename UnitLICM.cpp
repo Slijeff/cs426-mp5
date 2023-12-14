@@ -123,11 +123,13 @@ bool UnitLICM::checkIsNoAliasInLoop(AAResults &AA, Instruction &inst, Loop loop)
 }
 
 void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, const TargetLibraryInfo &TLI) {
-  std::set<Instruction *> loopInvariantVariables;
   const Instruction *CtxI; // TODO What is the second parameter for isSafeToSpeculativelyExecute?
 
   std::vector<Loop> allLoopsInFunction = Loops.allLoopsInFunction;
   for (Loop loop: allLoopsInFunction) {
+    std::set<Instruction *> loopInvariantVariables;
+    std::vector<Instruction *> InstToHoist;
+
     std::vector<BasicBlock* > blocksInLoop = loop.blocksInLoop;
     BasicBlock *preHeader = loop.preHeader;
     for (BasicBlock *block: blocksInLoop) {
@@ -144,8 +146,7 @@ void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT,
 
             if (inst.mayHaveSideEffects() == false) {
               // TODO check if guaranteed to be run at least once because don't want to execute an instruction once that was previously executed zero times 
-              // TODO if all arguments are constant or defined out of the loop
-              
+
               bool isConstantOrDefinedOutsideLoopOrLoopInvariant;
               bool allConstantOrDefinedOutsideLoopOrLoopInvariant = true;
               for (auto &op: inst.operands()) {
@@ -168,9 +169,8 @@ void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT,
                 loopInvariantVariables.insert(&inst);
               }
               
-              // TODO possible segmentation fault
               if (allConstantOrDefinedOutsideLoopOrLoopInvariant) {
-                hoistInstruction(inst, loop);
+                InstToHoist.push_back(&inst);
               }
 
             } else if (inst.mayHaveSideEffects() == true) {
@@ -183,8 +183,7 @@ void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT,
                     bool is_store_address_const = isa<ConstantData>(address);
                     bool no_alias_in_loop = checkIsNoAliasInLoop(AA, inst, loop);
                     if (is_store_address_const || no_alias_in_loop) {
-                      hoistInstruction(inst, loop);
-
+                      InstToHoist.push_back(&inst);
                     }
 
                   }
@@ -196,6 +195,10 @@ void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT,
         }
       }
     }
+    for (auto &I: InstToHoist) {
+      hoistInstruction(I, loop);
+    }
+
   }
 }
 
@@ -204,25 +207,17 @@ void UnitLICM::printStats() {
   << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
 }
 
-void UnitLICM::hoistInstruction(Instruction &inst, Loop loop) {
-  BasicBlock *preHeader = loop.preHeader;
 
-  // TODO possible segmentation fault
-  dbgs() << "before erase: " << inst << "\n";
-  inst.eraseFromParent();
-  dbgs() << "after erase: " << inst << "\n";
-  BasicBlock::iterator BBI = preHeader->end();
-  Instruction &preheader_last_inst = *BBI;
-  dbgs() << "before insert: " << inst << "\n";
-  inst.insertAfter(&preheader_last_inst);
-  dbgs() << "after insert: " << inst << "\n";
-
-  unsigned int opcode = inst.getOpcode();
+void UnitLICM::hoistInstruction(Instruction *inst, Loop loop) {
+  unsigned int opcode = inst->getOpcode();
   if (opcode == Instruction::Load) {
     NumHoistedLoads++;
   } else if (opcode == Instruction::Store) {
     NumHoistedStores++;
-  } else if (checkIsComputationalInstruction(inst)) {
+  } else if (checkIsComputationalInstruction(*inst)) {
     NumHoistedComputationalInst++;
   }
+
+  BasicBlock *preHeader = loop.preHeader;
+  inst->moveBefore(preHeader->getTerminator());
 }
