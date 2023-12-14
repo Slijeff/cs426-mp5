@@ -26,12 +26,9 @@ struct UnitLICM : PassInfoMixin<UnitLICM> {
   void VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, const TargetLibraryInfo &TLI);
   void printStats();
 
-  void BuildUseDefInstMap(Function& F);
   bool checkIsInstructionInLoop(Instruction *I, Loop loop);
   void hoistInstruction(Instruction *I, Loop loop);
 public:
-  std::map<Instruction *, std::vector<Instruction *>> UseDefInstMap;
-
   int NumHoistedStores;
   int NumHoistedLoads;
   int NumHoistedComputationalInst;

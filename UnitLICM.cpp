@@ -22,7 +22,6 @@ PreservedAnalyses UnitLICM::run(Function& F, FunctionAnalysisManager& FAM) {
   DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
   const TargetLibraryInfo &TLI = FAM.getResult<TargetLibraryAnalysis>(F);
   // Perform the optimization
-  BuildUseDefInstMap(F);
   VisitLoops(Loops, AA, DT, TLI);
 
   // Set proper preserved analyses
@@ -71,19 +70,6 @@ bool UnitLICM::checkIsComputationalInstruction(Instruction &I) {
   }
 
   return isComputationalInstruction;
-}
-
-void UnitLICM::BuildUseDefInstMap(Function& F) {
-  for (auto &defInst: instructions(F)) {
-    for (User *U: defInst.users()) {
-      if (Instruction *useInst = dyn_cast<Instruction>(U)) {
-        dbgs() << defInst;
-        dbgs() << " is used in instruction:\n";
-        dbgs() << *useInst << "\n";
-        UseDefInstMap[useInst].push_back(&defInst);
-      }
-    }
-  }
 }
 
 bool UnitLICM::checkIsInstructionInLoop(Instruction *I, Loop loop) {
@@ -138,8 +124,6 @@ void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT,
         if (checkIsHandled(inst) == false) {
           continue;
         }
-        dbgs() << inst << "\n";
-
       
         if (inst.isVolatile() == false) {
           if (isSafeToSpeculativelyExecute(&inst, &inst, &DT, &TLI) == true) {
@@ -158,7 +142,7 @@ void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT,
                   dbgs() << "Operand as instruction: " << *defInst << "\n";
                 } else if (loopInvariantVariables.count(defInst) > 0) {
                   isConstantOrDefinedOutsideLoopOrLoopInvariant = true;
-                  dbgs() << "Loop invariant: " << *defInst << "\n";
+                  dbgs() << inst << " uses Loop invariant: " << *defInst << "\n";
                 } else {
                   isConstantOrDefinedOutsideLoopOrLoopInvariant = false;
                 }
