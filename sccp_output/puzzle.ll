@@ -115,7 +115,7 @@ define dso_local ptr @createRandomArray(i32 noundef %0) #0 {
   %3 = sext i32 %2 to i64
   %4 = mul i64 %3, 4
   %5 = call noalias ptr @malloc(i64 noundef %4) #5
-  %6 = icmp slt i32 0, %2
+  %6 = icmp slt i64 0, i32 %2
   br i1 %6, label %.lr.ph, label %13
 
 .lr.ph:                                           ; preds = %1
@@ -149,7 +149,7 @@ declare noalias ptr @malloc(i64 noundef) #1
 
 ; Function Attrs: noinline nounwind uwtable
 define dso_local i32 @findDuplicate(ptr noundef %0, i32 noundef %1) #0 {
-  %3 = icmp slt i32 0, %1
+  %3 = icmp slt i64 0, i32 %1
   br i1 %3, label %.lr.ph, label %14
 
 .lr.ph:                                           ; preds = %2
@@ -213,7 +213,7 @@ define dso_local i32 @main() #0 {
   br i1 %12, label %1, label %13, !llvm.loop !11
 
 13:                                               ; preds = %10
-  ret i32 0
+  ret i64 0
 }
 
 ; Function Attrs: nounwind

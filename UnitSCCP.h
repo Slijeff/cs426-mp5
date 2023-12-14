@@ -121,6 +121,7 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   static ConstantData *calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2);
   static ConstantData *calculateBinaryOp(BinaryOperator &inst, ConstantData *e1, ConstantData *e2);
   static ConstantData *calculateUnaryOp(UnaryOperator &inst, ConstantData *e);
+  static ConstantData *calculateCastOp(CastInst &inst, ConstantData *e);
 
   // Replace constants and delete unreachable basic blocks
   void replaceConsts(Function &F);

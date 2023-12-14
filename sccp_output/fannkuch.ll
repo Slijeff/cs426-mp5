@@ -11,15 +11,15 @@ target triple = "x86_64-pc-linux-gnu"
 define dso_local i32 @main(i32 noundef %0, ptr noundef %1) #0 {
   %3 = call i64 @fannkuch(i32 noundef 11)
   %4 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef 11, i64 noundef %3)
-  ret i32 0
+  ret i64 0
 }
 
 declare i32 @printf(ptr noundef, ...) #1
 
 ; Function Attrs: noinline nounwind uwtable
 define internal i64 @fannkuch(i32 noundef %0) #0 {
-  %2 = sub nsw i32 %0, 1
-  %3 = icmp slt i32 %0, 1
+  %2 = sub nsw i32 %0, i64 1
+  %3 = icmp slt i32 %0, i64 1
   br i1 %3, label %4, label %5
 
 4:                                                ; preds = %1
@@ -32,7 +32,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   %9 = call noalias ptr @calloc(i64 noundef %8, i64 noundef 4) #3
   %10 = sext i32 %0 to i64
   %11 = call noalias ptr @calloc(i64 noundef %10, i64 noundef 4) #3
-  %12 = icmp slt i32 0, %0
+  %12 = icmp slt i64 0, i32 %0
   br i1 %12, label %.lr.ph, label %19
 
 .lr.ph:                                           ; preds = %5
@@ -46,7 +46,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   br label %16
 
 16:                                               ; preds = %13
-  %17 = add nsw i32 %.0414, 1
+  %17 = add nsw i32 %.0414, i64 1
   %18 = icmp slt i32 %17, %0
   br i1 %18, label %13, label %._crit_edge, !llvm.loop !6
 
@@ -64,7 +64,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   br i1 %21, label %22, label %36
 
 22:                                               ; preds = %20
-  %23 = icmp slt i32 0, %0
+  %23 = icmp slt i64 0, i32 %0
   br i1 %23, label %.lr.ph17, label %33
 
 .lr.ph17:                                         ; preds = %22
@@ -75,12 +75,12 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   %25 = sext i32 %.1515 to i64
   %26 = getelementptr inbounds i32, ptr %9, i64 %25
   %27 = load i32, ptr %26, align 4
-  %28 = add nsw i32 1, %27
+  %28 = add nsw i64 1, i32 %27
   %29 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %28)
   br label %30
 
 30:                                               ; preds = %24
-  %31 = add nsw i32 %.1515, 1
+  %31 = add nsw i32 %.1515, i64 1
   %32 = icmp slt i32 %31, %0
   br i1 %32, label %24, label %._crit_edge18, !llvm.loop !8
 
@@ -89,12 +89,12 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
 
 33:                                               ; preds = %._crit_edge18, %22
   %34 = call i32 (ptr, ...) @printf(ptr noundef @.str.2)
-  %35 = add nsw i32 %.02, 1
+  %35 = add nsw i32 %.02, i64 1
   br label %36
 
 36:                                               ; preds = %33, %20
   %.1 = phi i32 [ %35, %33 ], [ %.02, %20 ]
-  %37 = icmp ne i32 %.010, 1
+  %37 = icmp ne i32 %.010, i64 1
   br i1 %37, label %.lr.ph21, label %45
 
 .lr.ph21:                                         ; preds = %36
@@ -102,7 +102,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
 
 38:                                               ; preds = %42, %.lr.ph21
   %.11119 = phi i32 [ %.010, %.lr.ph21 ], [ %43, %42 ]
-  %39 = sub nsw i32 %.11119, 1
+  %39 = sub nsw i32 %.11119, i64 1
   %40 = sext i32 %39 to i64
   %41 = getelementptr inbounds i32, ptr %11, i64 %40
   store i32 %.11119, ptr %41, align 4
@@ -110,7 +110,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
 
 42:                                               ; preds = %38
   %43 = add nsw i32 %.11119, -1
-  %44 = icmp ne i32 %43, 1
+  %44 = icmp ne i32 %43, i64 1
   br i1 %44, label %38, label %._crit_edge22, !llvm.loop !9
 
 ._crit_edge22:                                    ; preds = %42
@@ -121,7 +121,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   %.111.lcssa = phi i32 [ %split, %._crit_edge22 ], [ %.010, %36 ]
   %46 = getelementptr inbounds i32, ptr %9, i64 0
   %47 = load i32, ptr %46, align 4
-  %48 = icmp eq i32 %47, 0
+  %48 = icmp eq i32 %47, i64 0
   br i1 %48, label %99, label %49
 
 49:                                               ; preds = %45
@@ -132,7 +132,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   br i1 %53, label %99, label %54
 
 54:                                               ; preds = %49
-  %55 = icmp slt i32 1, %0
+  %55 = icmp slt i64 1, i32 %0
   br i1 %55, label %.lr.ph25, label %65
 
 .lr.ph25:                                         ; preds = %54
@@ -149,7 +149,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   br label %62
 
 62:                                               ; preds = %56
-  %63 = add nsw i32 %.223, 1
+  %63 = add nsw i32 %.223, i64 1
   %64 = icmp slt i32 %63, %0
   br i1 %64, label %56, label %._crit_edge26, !llvm.loop !10
 
@@ -164,8 +164,8 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
 68:                                               ; preds = %93, %65
   %.06 = phi i64 [ 0, %65 ], [ %87, %93 ]
   %.03 = phi i32 [ %67, %65 ], [ %90, %93 ]
-  %69 = sub nsw i32 %.03, 1
-  %70 = icmp slt i32 1, %69
+  %69 = sub nsw i32 %.03, i64 1
+  %70 = icmp slt i64 1, i32 %69
   br i1 %70, label %.lr.ph30, label %86
 
 .lr.ph30:                                         ; preds = %68
@@ -189,7 +189,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   br label %82
 
 82:                                               ; preds = %71
-  %83 = add nsw i32 %.327, 1
+  %83 = add nsw i32 %.327, i64 1
   %84 = add nsw i32 %.0128, -1
   %85 = icmp slt i32 %83, %84
   br i1 %85, label %71, label %._crit_edge31, !llvm.loop !11
@@ -208,7 +208,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   br label %93
 
 93:                                               ; preds = %86
-  %94 = icmp ne i32 %90, 0
+  %94 = icmp ne i32 %90, i64 0
   br i1 %94, label %68, label %95, !llvm.loop !12
 
 95:                                               ; preds = %93
@@ -247,7 +247,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   %.21236 = phi i32 [ %.111.lcssa, %.lr.ph38 ], [ %124, %123 ]
   %103 = getelementptr inbounds i32, ptr %9, i64 0
   %104 = load i32, ptr %103, align 4
-  %105 = icmp slt i32 0, %.21236
+  %105 = icmp slt i64 0, i32 %.21236
   br i1 %105, label %.lr.ph34, label %114
 
 .lr.ph34:                                         ; preds = %102
@@ -255,7 +255,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
 
 106:                                              ; preds = %106, %.lr.ph34
   %.432 = phi i32 [ 0, %.lr.ph34 ], [ %107, %106 ]
-  %107 = add nsw i32 %.432, 1
+  %107 = add nsw i32 %.432, i64 1
   %108 = sext i32 %107 to i64
   %109 = getelementptr inbounds i32, ptr %9, i64 %108
   %110 = load i32, ptr %109, align 4
@@ -275,9 +275,9 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   %117 = sext i32 %.21236 to i64
   %118 = getelementptr inbounds i32, ptr %11, i64 %117
   %119 = load i32, ptr %118, align 4
-  %120 = sub nsw i32 %119, 1
+  %120 = sub nsw i32 %119, i64 1
   store i32 %120, ptr %118, align 4
-  %121 = icmp sgt i32 %120, 0
+  %121 = icmp sgt i32 %120, i64 0
   br i1 %121, label %122, label %123
 
 122:                                              ; preds = %114
@@ -285,7 +285,7 @@ define internal i64 @fannkuch(i32 noundef %0) #0 {
   br label %126
 
 123:                                              ; preds = %114
-  %124 = add nsw i32 %.21236, 1
+  %124 = add nsw i32 %.21236, i64 1
   %125 = icmp eq i32 %124, %0
   br i1 %125, label %._crit_edge41, label %102
 
@@ -308,7 +308,7 @@ attributes #3 = { nounwind allocsize(0,1) }
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}
 
-!0 = !{i32 1, !"wchar_size", i32 4}
+!0 = !{i64 1, !"wchar_size", i32 4}
 !1 = !{i32 7, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"uwtable", i32 2}

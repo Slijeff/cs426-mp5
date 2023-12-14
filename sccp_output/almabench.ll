@@ -201,7 +201,7 @@ define dso_local void @planetpv(ptr noundef %0, i32 noundef %1, ptr noundef %2) 
 
 149:                                              ; preds = %106
   %150 = add nsw i32 %.035, 1
-  %151 = icmp slt i32 %150, 8
+  %151 = icmp slt i32 %150, i64 8
   br i1 %151, label %106, label %152, !llvm.loop !6
 
 152:                                              ; preds = %149
@@ -510,7 +510,7 @@ define dso_local i32 @main(i32 noundef %0, ptr noundef %1) #0 {
   %10 = getelementptr inbounds ptr, ptr %1, i64 1
   %11 = load ptr, ptr %10, align 8
   %12 = call i32 @strcmp(ptr noundef %11, ptr noundef @.str) #6
-  %13 = icmp ne i32 %12, 0
+  %13 = icmp ne i32 %12, i64 0
   br i1 %13, label %15, label %14
 
 14:                                               ; preds = %9
@@ -566,7 +566,7 @@ define dso_local i32 @main(i32 noundef %0, ptr noundef %1) #0 {
 
 35:                                               ; preds = %28
   %36 = add nsw i32 %.05, 1
-  %37 = icmp slt i32 %36, 8
+  %37 = icmp slt i32 %36, i64 8
   br i1 %37, label %28, label %38, !llvm.loop !10
 
 38:                                               ; preds = %35
@@ -607,13 +607,13 @@ define dso_local i32 @main(i32 noundef %0, ptr noundef %1) #0 {
 
 61:                                               ; preds = %47
   %62 = add nsw i32 %.18, 1
-  %63 = icmp slt i32 %62, 8
+  %63 = icmp slt i32 %62, i64 8
   br i1 %63, label %47, label %64, !llvm.loop !13
 
 64:                                               ; preds = %61
   %65 = load ptr, ptr @stdout, align 8
   %66 = call i32 @fflush(ptr noundef %65)
-  ret i32 0
+  ret i64 0
 }
 
 ; Function Attrs: nounwind readonly willreturn

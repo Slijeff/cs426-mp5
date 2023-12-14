@@ -71,7 +71,7 @@ void UnitSCCP::visitInstruction(Instruction &i) {
     visitPhi(cast<PHINode>(i), curLattice);
   } else if (isa<BranchInst>(i)) {
     visitBranch(cast<BranchInst>(i));
-  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i)) {
+  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i) || isa<CastInst>(i)) {
     visitFoldable(i, curLattice);
   } else {
     curLattice.status = LatticeStatus::BOTTOM;
@@ -148,10 +148,15 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     if (e1 != nullptr && e2 != nullptr) {
       folded = calculateBinaryOp(cast<BinaryOperator>(i), e1, e2);
     }
-  } else {
+  } else if (isa<UnaryOperator>(i)) {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     if (e1 != nullptr) {
       folded = calculateUnaryOp(cast<UnaryOperator>(i), e1);
+    }
+  } else if (isa<CastInst>(i)) {
+    auto *e1 = lattice_map.get(i.getOperand(0)).constant;
+    if (e1 != nullptr) {
+      folded = calculateCastOp(cast<CastInst>(i), e1);
     }
   }
 
@@ -170,6 +175,20 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     }
   }
 }
+
+ConstantData *UnitSCCP::calculateCastOp(CastInst &inst, ConstantData *e) {
+//  dbgs() << "cast: " <<"\n";
+//  e->print(dbgs(), true);
+//  dbgs() << "\n";
+  dyn_cast<ConstantInt>(e)->mutateType(inst.getDestTy());
+//  e->print(dbgs(), true);
+//  dbgs() << "\n";
+
+//  inst.getDestTy();
+  return e;
+  return nullptr;
+}
+
 ConstantData *UnitSCCP::calculateUnaryOp(UnaryOperator &inst, ConstantData *e) {
   auto op = inst.getOpcode();
 

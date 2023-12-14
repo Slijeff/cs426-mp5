@@ -7,125 +7,123 @@ target triple = "x86_64-pc-linux-gnu"
 
 ; Function Attrs: noinline nounwind uwtable
 define dso_local i32 @main(i32 noundef %0, ptr noundef %1) #0 {
-  %3 = zext i32 5120000 to i64
-  %4 = add i64 %3, 4
-  %5 = call noalias ptr @malloc(i64 noundef %4) #5
-  %6 = icmp ne ptr %5, null
-  br i1 %6, label %8, label %7
+  %3 = call noalias ptr @malloc(i64 noundef 5120004) #5
+  %4 = icmp ne ptr %3, null
+  br i1 %4, label %6, label %5
 
-7:                                                ; preds = %2
-  br label %66
+5:                                                ; preds = %2
+  br label %64
 
-8:                                                ; preds = %2
-  br label %9
+6:                                                ; preds = %2
+  br label %7
 
-9:                                                ; preds = %62, %8
-  %.0311 = phi i32 [ 0, %8 ], [ %63, %62 ]
-  %10 = lshr i32 40960000, %.0311
-  %11 = udiv i32 %10, 8
-  %12 = zext i32 %11 to i64
-  %13 = add i64 %12, 4
-  call void @llvm.memset.p0.i64(ptr align 4 %5, i8 -1, i64 %13, i1 false)
-  %14 = icmp ule i32 2, %10
-  br i1 %14, label %.lr.ph9, label %60
+7:                                                ; preds = %60, %6
+  %.0311 = phi i32 [ 0, %6 ], [ %61, %60 ]
+  %8 = lshr i32 40960000, %.0311
+  %9 = udiv i32 %8, 8
+  %10 = zext i32 %9 to i64
+  %11 = add i64 %10, 4
+  call void @llvm.memset.p0.i64(ptr align 4 %3, i8 -1, i64 %11, i1 false)
+  %12 = icmp ule i32 2, %8
+  br i1 %12, label %.lr.ph9, label %58
 
-.lr.ph9:                                          ; preds = %9
-  br label %15
+.lr.ph9:                                          ; preds = %7
+  br label %13
 
-15:                                               ; preds = %57, %.lr.ph9
-  %.017 = phi i32 [ 0, %.lr.ph9 ], [ %.1, %57 ]
-  %.046 = phi i32 [ 2, %.lr.ph9 ], [ %58, %57 ]
-  %16 = zext i32 %.046 to i64
-  %17 = udiv i64 %16, 32
-  %18 = getelementptr inbounds i32, ptr %5, i64 %17
-  %19 = load i32, ptr %18, align 4
-  %20 = zext i32 %.046 to i64
-  %21 = urem i64 %20, 32
-  %22 = trunc i64 %21 to i32
-  %23 = shl i32 1, %22
-  %24 = and i32 %19, %23
-  %25 = icmp ne i32 %24, 0
-  br i1 %25, label %26, label %56
+13:                                               ; preds = %55, %.lr.ph9
+  %.017 = phi i32 [ 0, %.lr.ph9 ], [ %.1, %55 ]
+  %.046 = phi i32 [ 2, %.lr.ph9 ], [ %56, %55 ]
+  %14 = zext i32 %.046 to i64
+  %15 = udiv i64 %14, 32
+  %16 = getelementptr inbounds i32, ptr %3, i64 %15
+  %17 = load i32, ptr %16, align 4
+  %18 = zext i32 %.046 to i64
+  %19 = urem i64 %18, 32
+  %20 = trunc i64 %19 to i32
+  %21 = shl i32 1, %20
+  %22 = and i32 %17, %21
+  %23 = icmp ne i32 %22, 0
+  br i1 %23, label %24, label %54
 
-26:                                               ; preds = %15
-  %27 = add i32 %.017, 1
-  %28 = add i32 %.046, %.046
-  %29 = icmp ule i32 %28, %10
-  br i1 %29, label %.lr.ph, label %55
+24:                                               ; preds = %13
+  %25 = add i32 %.017, 1
+  %26 = add i32 %.046, %.046
+  %27 = icmp ule i32 %26, %8
+  br i1 %27, label %.lr.ph, label %53
 
-.lr.ph:                                           ; preds = %26
-  br label %30
+.lr.ph:                                           ; preds = %24
+  br label %28
 
-30:                                               ; preds = %52, %.lr.ph
-  %.025 = phi i32 [ %28, %.lr.ph ], [ %53, %52 ]
-  %31 = zext i32 %.025 to i64
-  %32 = udiv i64 %31, 32
-  %33 = getelementptr inbounds i32, ptr %5, i64 %32
-  %34 = load i32, ptr %33, align 4
-  %35 = zext i32 %.025 to i64
-  %36 = urem i64 %35, 32
-  %37 = trunc i64 %36 to i32
-  %38 = shl i32 1, %37
-  %39 = and i32 %34, %38
-  %40 = icmp ne i32 %39, 0
-  br i1 %40, label %41, label %51
+28:                                               ; preds = %50, %.lr.ph
+  %.025 = phi i32 [ %26, %.lr.ph ], [ %51, %50 ]
+  %29 = zext i32 %.025 to i64
+  %30 = udiv i64 %29, 32
+  %31 = getelementptr inbounds i32, ptr %3, i64 %30
+  %32 = load i32, ptr %31, align 4
+  %33 = zext i32 %.025 to i64
+  %34 = urem i64 %33, 32
+  %35 = trunc i64 %34 to i32
+  %36 = shl i32 1, %35
+  %37 = and i32 %32, %36
+  %38 = icmp ne i32 %37, 0
+  br i1 %38, label %39, label %49
 
-41:                                               ; preds = %30
-  %42 = zext i32 %.025 to i64
-  %43 = urem i64 %42, 32
-  %44 = trunc i64 %43 to i32
-  %45 = shl i32 1, %44
-  %46 = zext i32 %.025 to i64
-  %47 = udiv i64 %46, 32
-  %48 = getelementptr inbounds i32, ptr %5, i64 %47
-  %49 = load i32, ptr %48, align 4
-  %50 = xor i32 %49, %45
-  store i32 %50, ptr %48, align 4
-  br label %51
+39:                                               ; preds = %28
+  %40 = zext i32 %.025 to i64
+  %41 = urem i64 %40, 32
+  %42 = trunc i64 %41 to i32
+  %43 = shl i32 1, %42
+  %44 = zext i32 %.025 to i64
+  %45 = udiv i64 %44, 32
+  %46 = getelementptr inbounds i32, ptr %3, i64 %45
+  %47 = load i32, ptr %46, align 4
+  %48 = xor i32 %47, %43
+  store i32 %48, ptr %46, align 4
+  br label %49
 
-51:                                               ; preds = %41, %30
-  br label %52
+49:                                               ; preds = %39, %28
+  br label %50
 
-52:                                               ; preds = %51
-  %53 = add i32 %.025, %.046
-  %54 = icmp ule i32 %53, %10
-  br i1 %54, label %30, label %._crit_edge, !llvm.loop !6
+50:                                               ; preds = %49
+  %51 = add i32 %.025, %.046
+  %52 = icmp ule i32 %51, %8
+  br i1 %52, label %28, label %._crit_edge, !llvm.loop !6
 
-._crit_edge:                                      ; preds = %52
+._crit_edge:                                      ; preds = %50
+  br label %53
+
+53:                                               ; preds = %._crit_edge, %24
+  br label %54
+
+54:                                               ; preds = %53, %13
+  %.1 = phi i32 [ %25, %53 ], [ %.017, %13 ]
   br label %55
 
-55:                                               ; preds = %._crit_edge, %26
-  br label %56
+55:                                               ; preds = %54
+  %56 = add i32 %.046, 1
+  %57 = icmp ule i32 %56, %8
+  br i1 %57, label %13, label %._crit_edge10, !llvm.loop !8
 
-56:                                               ; preds = %55, %15
-  %.1 = phi i32 [ %27, %55 ], [ %.017, %15 ]
-  br label %57
+._crit_edge10:                                    ; preds = %55
+  %split = phi i32 [ %.1, %55 ]
+  br label %58
 
-57:                                               ; preds = %56
-  %58 = add i32 %.046, 1
-  %59 = icmp ule i32 %58, %10
-  br i1 %59, label %15, label %._crit_edge10, !llvm.loop !8
-
-._crit_edge10:                                    ; preds = %57
-  %split = phi i32 [ %.1, %57 ]
+58:                                               ; preds = %._crit_edge10, %7
+  %.01.lcssa = phi i32 [ %split, %._crit_edge10 ], [ 0, %7 ]
+  %59 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %8, i32 noundef %.01.lcssa)
   br label %60
 
-60:                                               ; preds = %._crit_edge10, %9
-  %.01.lcssa = phi i32 [ %split, %._crit_edge10 ], [ 0, %9 ]
-  %61 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %10, i32 noundef %.01.lcssa)
-  br label %62
+60:                                               ; preds = %58
+  %61 = add i32 %.0311, 1
+  %62 = icmp ule i32 %61, 2
+  br i1 %62, label %7, label %63, !llvm.loop !9
 
-62:                                               ; preds = %60
-  %63 = add i32 %.0311, 1
-  %64 = icmp ule i32 %63, 2
-  br i1 %64, label %9, label %65, !llvm.loop !9
+63:                                               ; preds = %60
+  call void @free(ptr noundef %3) #6
+  br label %64
 
-65:                                               ; preds = %62
-  call void @free(ptr noundef %5) #6
-  br label %66
-
-66:                                               ; preds = %65, %7
-  %.0 = phi i32 [ 0, %65 ], [ 1, %7 ]
+64:                                               ; preds = %63, %5
+  %.0 = phi i32 [ 0, %63 ], [ 1, %5 ]
   ret i32 %.0
 }
 
@@ -151,7 +149,7 @@ attributes #6 = { nounwind }
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}
 
-!0 = !{i32 1, !"wchar_size", i32 4}
+!0 = !{i32 1, !"wchar_size", i64 4}
 !1 = !{i32 7, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"uwtable", i32 2}
