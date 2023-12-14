@@ -14,8 +14,6 @@ class Config:
 
     sccp_output_dir = "./sccp_output"
 
-    clean_opt_output = sccp_output_dir
-
 
 def compile_official(src_dir):
     if not os.path.exists(Config.official_ll_output_dir):
@@ -59,7 +57,7 @@ def main():
     if function_name == 'compile-sccp':
         compile_sccp_official()
     elif function_name == 'clean':
-        subprocess.run(["rm -rf " + Config.clean_opt_output + "/*"], shell=True)
+        subprocess.run(["rm -rf *.ll *.out"], shell=True)
     else:
         print(f"Unknown function: {function_name}")
 

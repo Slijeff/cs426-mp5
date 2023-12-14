@@ -12,14 +12,14 @@ class Loop {
   // the order in blocksInLoop is not guaranteed, so we need loopStart and loopEnd
   // - loopEnd has a backedge to loopStart
   // - preHeader is the block right before loopStart
-  public:
-  BasicBlock* preHeader = nullptr;
-  BasicBlock* loopStart = nullptr;
-  BasicBlock* loopEnd = nullptr;
-  std::vector<BasicBlock* > blocksInLoop = {}; 
+ public:
+  BasicBlock *preHeader = nullptr;
+  BasicBlock *loopStart = nullptr;
+  BasicBlock *loopEnd = nullptr;
+  std::vector<BasicBlock *> blocksInLoop = {};
 };
 class UnitLoopInfo {
-  public:
+ public:
   // Define this class to provide the information you need in LICM
   std::vector<Loop> allLoopsInFunction = {};
 };
@@ -31,15 +31,16 @@ class UnitLoopAnalysis : public AnalysisInfoMixin<UnitLoopAnalysis> {
   friend AnalysisInfoMixin<UnitLoopAnalysis>;
   static AnalysisKey Key;
 
-public:
+ public:
   typedef UnitLoopInfo Result;
 
   UnitLoopInfo run(Function &F, FunctionAnalysisManager &AM);
 
-private:
+ private:
   void findPred(BasicBlock *cur, std::set<BasicBlock *> &visited, std::vector<BasicBlock *> &path);
-  void printBackEdgesToDebug(std::vector<std::pair<BasicBlock*, BasicBlock*>> &BE);
+  void printBackEdgesToDebug(std::vector<std::pair<BasicBlock *, BasicBlock *>> &BE);
   void printAllLoops(UnitLoopInfo &info);
+  BasicBlock *getPreheader(BasicBlock* header, Loop& curLoop);
 };
 } // namespace
 #endif // INCLUDE_UNIT_LOOP_INFO_H

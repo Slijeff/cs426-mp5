@@ -46,11 +46,11 @@ UnitLoopInfo UnitLoopAnalysis::run(Function &F, FunctionAnalysisManager &FAM)
     singleLoopInfo.loopStart = start;
     singleLoopInfo.loopEnd = end;
     // FIXME: double check the definition of preheader
-    singleLoopInfo.preHeader = DT.getNode(end)->getIDom()->getIDom()->getBlock();
     std::set<BasicBlock *> visited = {start};
     std::vector<BasicBlock *> loopBlocks = {start};
     findPred(end, visited, loopBlocks);
     singleLoopInfo.blocksInLoop.insert(singleLoopInfo.blocksInLoop.end(), loopBlocks.begin(), loopBlocks.end());
+    singleLoopInfo.preHeader = getPreheader(start, singleLoopInfo);
     Loops.allLoopsInFunction.push_back(singleLoopInfo);
   }
 
@@ -99,6 +99,15 @@ void UnitLoopAnalysis::printAllLoops(UnitLoopInfo &info){
     dbgs() << "\n";
     i++;
   }
+}
+BasicBlock *UnitLoopAnalysis::getPreheader(BasicBlock *header, Loop& curLoop) {
+  for (auto BB : predecessors(header)) {
+    if (std::find(curLoop.blocksInLoop.begin(), curLoop.blocksInLoop.end(), BB) == curLoop.blocksInLoop.end()) {
+      return BB;
+    }
+  }
+  dbgs() << "In general, shouldn't get here.\n";
+  return nullptr;
 }
 
 AnalysisKey UnitLoopAnalysis::Key;
