@@ -119,7 +119,7 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
   void visitFoldable(Instruction &i, Lattice &curStatus);
 
   static ConstantData *calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2);
-  static ConstantData *calculateBinaryOp(Instruction &inst, ConstantData *e1, ConstantData *e2);
+  static ConstantData *calculateBinaryOp(BinaryOperator &inst, ConstantData *e1, ConstantData *e2);
   ConstantData *calculateUnaryOp(Instruction &inst, ConstantData &e);
 
   // Replace constants according to SCCP

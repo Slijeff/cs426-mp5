@@ -146,7 +146,7 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
     if (e1 != nullptr && e2 != nullptr) {
-      folded = calculateBinaryOp(i, e1, e2);
+      folded = calculateBinaryOp(cast<BinaryOperator>(i), e1, e2);
     }
   }
 
@@ -165,7 +165,7 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     }
   }
 }
-ConstantData *UnitSCCP::calculateBinaryOp(Instruction &inst, ConstantData *e1, ConstantData *e2) {
+ConstantData *UnitSCCP::calculateBinaryOp(BinaryOperator &inst, ConstantData *e1, ConstantData *e2) {
   auto op = inst.getOpcode();
 
   auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
@@ -178,6 +178,14 @@ ConstantData *UnitSCCP::calculateBinaryOp(Instruction &inst, ConstantData *e1, C
     case Instruction::SDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).sdiv(toAPInt(e2))));
     case Instruction::UDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).udiv(toAPInt(e2))));
     case Instruction::Mul:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) * toAPInt(e2)));
+    case Instruction::SRem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).srem(toAPInt(e2))));
+    case Instruction::URem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).urem(toAPInt(e2))));
+
+    case Instruction::FAdd:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) + toAPFloat(e2)));
+    case Instruction::FSub:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) - toAPFloat(e2)));
+    case Instruction::FDiv:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) / toAPFloat(e2)));
+    case Instruction::FMul:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) * toAPFloat(e2)));
+    case Instruction::FRem:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1).remainder(toAPFloat(e2))));
     default:return nullptr;
   }
 }
@@ -188,10 +196,12 @@ ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, Consta
   auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
 
   auto resType = inst.getType();
-  switch (op) {
-    case CmpInst::ICMP_EQ:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) == toAPInt(e2)));
-    case CmpInst::ICMP_SLT:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).slt(toAPInt(e2))));
-    default: return nullptr;
+  if (isa<ICmpInst>(inst)) {
+    return cast<ConstantData>(ConstantInt::get(resType, ICmpInst::compare(toAPInt(e1), toAPInt(e2), op)));
+  } else if (isa<FCmpInst>(inst)) {
+    return cast<ConstantData>(ConstantInt::get(resType, FCmpInst::compare(toAPFloat(e1), toAPFloat(e2), op)));
+  } else {
+    return nullptr;
   }
 }
 void UnitSCCP::replaceConsts(Function &F) {
