@@ -146,34 +146,30 @@ void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT,
               // TODO check if guaranteed to be run at least once because don't want to execute an instruction once that was previously executed zero times 
               // TODO if all arguments are constant or defined out of the loop
               
-              bool isConstantOrDefinedOutsideLoopOrLoopInvariant = true;
+              bool isConstantOrDefinedOutsideLoopOrLoopInvariant;
+              bool allConstantOrDefinedOutsideLoopOrLoopInvariant = true;
               for (auto &op: inst.operands()) {
+                Instruction *defInst = dyn_cast<Instruction>(op);
                 if (isa<ConstantData>(op)) {
-                  
-                } else if (true) {
-                  std::vector<Instruction *> defInsts = UseDefInstMap[&inst];
-                  bool isDefInstInLoop = false;
-                  for (Instruction *defInst: defInsts) {
-                    // TODO how to test values for equality
-                    defInst->getOperand(0)->printAsOperand(dbgs(), false);
-                    dbgs() << op << "\n";
-
-                    // if (defInst->getOperand(0)->equals(op)) {
-                      isDefInstInLoop = isDefInstInLoop || checkIsInstructionInLoop(defInst, loop);
-                    // }
-                  }
+                  isConstantOrDefinedOutsideLoopOrLoopInvariant = true;
+                } else if (checkIsInstructionInLoop(defInst, loop) == false) {
+                  isConstantOrDefinedOutsideLoopOrLoopInvariant = true;
+                  dbgs() << "Operand as instruction: " << *defInst << "\n";
+                } else if (loopInvariantVariables.count(defInst) > 0) {
+                  isConstantOrDefinedOutsideLoopOrLoopInvariant = true;
+                  dbgs() << "Loop invariant: " << *defInst << "\n";
                 } else {
                   isConstantOrDefinedOutsideLoopOrLoopInvariant = false;
                 }
+                allConstantOrDefinedOutsideLoopOrLoopInvariant = allConstantOrDefinedOutsideLoopOrLoopInvariant && isConstantOrDefinedOutsideLoopOrLoopInvariant;
               }
               
-              /*if (isConstantOrDefinedOutsideLoopOrLoopInvariant) {
+              if (allConstantOrDefinedOutsideLoopOrLoopInvariant) {
                 loopInvariantVariables.insert(&inst);
-              }*/
+              }
               
               // TODO possible segmentation fault
-              if (isConstantOrDefinedOutsideLoopOrLoopInvariant) {
-                dbgs() << "before erase: " << inst << "\n";
+              if (allConstantOrDefinedOutsideLoopOrLoopInvariant) {
                 hoistInstruction(inst, loop);
               }
 
@@ -212,10 +208,14 @@ void UnitLICM::hoistInstruction(Instruction &inst, Loop loop) {
   BasicBlock *preHeader = loop.preHeader;
 
   // TODO possible segmentation fault
+  dbgs() << "before erase: " << inst << "\n";
   inst.eraseFromParent();
+  dbgs() << "after erase: " << inst << "\n";
   BasicBlock::iterator BBI = preHeader->end();
   Instruction &preheader_last_inst = *BBI;
+  dbgs() << "before insert: " << inst << "\n";
   inst.insertAfter(&preheader_last_inst);
+  dbgs() << "after insert: " << inst << "\n";
 
   unsigned int opcode = inst.getOpcode();
   if (opcode == Instruction::Load) {
