@@ -13,7 +13,7 @@ using namespace cs426;
 
 /// Main function for running the SCCP optimization
 PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
-  dbgs() << "UnitSCCP running on " << F.getName() << "\n";
+  dbgs() << "UnitSCCP running on " << F.getParent()->getSourceFileName() << "--" << F.getName() << "\n";
   if (F.isDeclaration()) return PreservedAnalyses::all();
   // Perform the optimization
 
@@ -35,6 +35,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
 //  dbgs() << lattice_map;
   replaceConsts(F);
   // Set proper preserved analyses
+  dbgs() << "\n";
   return PreservedAnalyses::all();
 }
 
@@ -206,30 +207,43 @@ ConstantData *UnitSCCP::calculateBinaryOp(BinaryOperator &inst, ConstantData *e1
 
   auto toAPInt = [](ConstantData *d) -> APInt { return dyn_cast<ConstantInt>(d)->getValue(); };
   auto toAPFloat = [](ConstantData *d) -> APFloat { return dyn_cast<ConstantFP>(d)->getValue(); };
-
   auto resType = inst.getType();
-  switch (op) {
-    case Instruction::Add:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) + toAPInt(e2)));
-    case Instruction::Sub:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) - toAPInt(e2)));
-    case Instruction::SDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).sdiv(toAPInt(e2))));
-    case Instruction::UDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).udiv(toAPInt(e2))));
-    case Instruction::Mul:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) * toAPInt(e2)));
-    case Instruction::SRem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).srem(toAPInt(e2))));
-    case Instruction::URem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).urem(toAPInt(e2))));
-    case Instruction::Shl:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).shl(toAPInt(e2))));
-    case Instruction::LShr:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).lshr(toAPInt(e2))));
-    case Instruction::AShr:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).ashr(toAPInt(e2))));
-    case Instruction::And:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) & (toAPInt(e2))));
-    case Instruction::Or:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) | (toAPInt(e2))));
-    case Instruction::Xor:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) ^ (toAPInt(e2))));
+  if (isa<ConstantInt>(e1) && isa<ConstantInt>(e2)) {
+    switch (op) {
+      case Instruction::Add:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) + toAPInt(e2)));
+      case Instruction::Sub:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) - toAPInt(e2)));
+      case Instruction::SDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).sdiv(toAPInt(e2))));
+      case Instruction::UDiv:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).udiv(toAPInt(e2))));
+      case Instruction::Mul:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) * toAPInt(e2)));
+      case Instruction::SRem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).srem(toAPInt(e2))));
+      case Instruction::URem:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).urem(toAPInt(e2))));
+      case Instruction::Shl:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).shl(toAPInt(e2))));
+      case Instruction::LShr:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).lshr(toAPInt(e2))));
+      case Instruction::AShr:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1).ashr(toAPInt(e2))));
+      case Instruction::And:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) & (toAPInt(e2))));
+      case Instruction::Or:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) | (toAPInt(e2))));
+      case Instruction::Xor:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) ^ (toAPInt(e2))));
 
-    case Instruction::FAdd:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) + toAPFloat(e2)));
-    case Instruction::FSub:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) - toAPFloat(e2)));
-    case Instruction::FDiv:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) / toAPFloat(e2)));
-    case Instruction::FMul:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) * toAPFloat(e2)));
-    case Instruction::FRem:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1).remainder(toAPFloat(e2))));
-    default:return nullptr;
+      case Instruction::FAdd:return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) + toAPInt(e2)));
+      case Instruction::FSub: return cast<ConstantData>(ConstantInt::get(resType, toAPInt(e1) - toAPInt(e2)));
+      default:return nullptr;
+    }
+  } else if (isa<ConstantFP>(e1) && isa<ConstantFP>(e2)) {
+    switch (op) {
+      case Instruction::FAdd:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) + toAPFloat(e2)));
+      case Instruction::FSub:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) - toAPFloat(e2)));
+      case Instruction::FDiv:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) / toAPFloat(e2)));
+      case Instruction::FMul:return cast<ConstantData>(ConstantFP::get(resType, toAPFloat(e1) * toAPFloat(e2)));
+      case Instruction::FRem:
+        return cast<ConstantData>(ConstantFP::get(resType,
+                                                  toAPFloat(e1).remainder(toAPFloat(e2))));
+      default:return nullptr;
+    }
+  } else {
+    dbgs() << "BinOp types invalid? \n";
+    return nullptr;
   }
+
 }
 ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2) {
   auto op = inst.getPredicate();
@@ -241,6 +255,16 @@ ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, Consta
   if (isa<ICmpInst>(inst)) {
     return cast<ConstantData>(ConstantInt::get(resType, ICmpInst::compare(toAPInt(e1), toAPInt(e2), op)));
   } else if (isa<FCmpInst>(inst)) {
+    // handle double type, which is actually a ConstantInt
+//    if (isa<ConstantFP>(e1) && isa<ConstantInt>(e2)) {
+//      dbgs() << "INSIDEHERE is ConstantINt!!\n";
+//      e2->mutateType(e1->getType());
+//      dbgs() << dyn_cast<ConstantFP>(e1) << " " << dyn_cast<ConstantFP>(e2) << "\n";
+//      dbgs() << dyn_cast<ConstantInt>(e1) << " " << dyn_cast<ConstantInt>(e2) << "\n";
+//
+//      //      return cast<ConstantData>(ConstantInt::get(resType, ICmpInst::compare(toAPInt(e1), toAPInt(e2), op)));
+//      return cast<ConstantData>(ConstantInt::get(resType, FCmpInst::compare(toAPFloat(e1), toAPFloat(e2), op)));
+//    }
     return cast<ConstantData>(ConstantInt::get(resType, FCmpInst::compare(toAPFloat(e1), toAPFloat(e2), op)));
   } else {
     return nullptr;
@@ -248,7 +272,7 @@ ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, Consta
 }
 void UnitSCCP::replaceConsts(Function &F) {
   dbgs() << "Replacing constants...\n";
-  std::vector<Instruction *> remove;
+  std::vector<Instruction *> remove = {};
   for (auto &i : instructions(F)) {
     if (auto constant = lattice_map.get(&i).constant) {
       NumInstReplaced += i.getNumUses();
