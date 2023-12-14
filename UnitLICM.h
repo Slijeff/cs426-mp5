@@ -18,20 +18,21 @@ namespace cs426 {
 /// Loop Invariant Code Motion Optimization Pass
 struct UnitLICM : PassInfoMixin<UnitLICM> {
   PreservedAnalyses run(Function& F, FunctionAnalysisManager& FAM);
-  
-  bool checkIsHandled(Instruction &I);
-  bool checkIsComputationalInstruction(Instruction &I);
 
-  bool checkIsNoAliasInLoop(AAResults &AA, Instruction &inst, Loop loop);
-  void VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, const TargetLibraryInfo &TLI);
-  void printStats();
-
-  bool checkIsInstructionInLoop(Instruction *I, Loop loop);
-  void hoistInstruction(Instruction *I, Loop loop);
 public:
-  int NumHoistedStores;
-  int NumHoistedLoads;
-  int NumHoistedComputationalInst;
+//  std::map<Instruction *, std::vector<Instruction *>> UseDefInstMap;
+
+  std::vector<Instruction*> markedInvariants;
+  std::map<Instruction*, Loop*> invariantToLoop;
+
+
+  bool isInvariant(Instruction &inst, Loop &loop, AAResults &AA);
+  bool domAllExits(Instruction &inst, Loop &loop, DominatorTree &DT);
+  void moveToPreheader(Instruction &inst, Loop &loop);
+
+  size_t NumHoistedStores;
+  size_t NumHoistedLoads;
+  size_t NumHoistedComputationalInst;
 };
 } // namespace
 
