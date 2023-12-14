@@ -152,3 +152,8 @@ void UnitLICM::hoist(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, cons
     }
   }
 }
+
+void UnitLICM::printStats() {
+  dbgs() << "NumHoistedStores: " << NumHoistedStores << " | NumHoistedLoads: " << NumHoistedLoads
+  << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
+}

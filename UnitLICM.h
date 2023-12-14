@@ -19,6 +19,7 @@ struct UnitLICM : PassInfoMixin<UnitLICM> {
   bool checkIsHandled(Instruction &I);
   bool checkIsNoAliasInLoop(AAResults &AA, Instruction &inst, Loop loop);
   void hoist(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, const TargetLibraryInfo &TLI);
+  void printStats();
 public:
   int NumHoistedStores;
   int NumHoistedLoads;
