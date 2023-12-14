@@ -22,7 +22,8 @@ PreservedAnalyses UnitLICM::run(Function& F, FunctionAnalysisManager& FAM) {
   DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
   const TargetLibraryInfo &TLI = FAM.getResult<TargetLibraryAnalysis>(F);
   // Perform the optimization
-  hoist(Loops, AA, DT, TLI);
+  BuildUseDefInstMap(F);
+  VisitLoops(Loops, AA, DT, TLI);
 
   // Set proper preserved analyses
   return PreservedAnalyses::all();
@@ -56,6 +57,54 @@ bool UnitLICM::checkIsHandled(Instruction &I) {
   return isHandled;
 }
 
+bool UnitLICM::checkIsComputationalInstruction(Instruction &I) {
+  bool isComputationalInstruction = true;
+  unsigned int opcode = I.getOpcode();
+  if (opcode == Instruction::BitCast) {
+    isComputationalInstruction = false;
+  } else if (opcode == Instruction::GetElementPtr) {
+    isComputationalInstruction = false;
+  } else if (opcode == Instruction::Load) {
+    isComputationalInstruction = false;
+  } else if (opcode == Instruction::Store) {
+    isComputationalInstruction = false;
+  }
+
+  return isComputationalInstruction;
+}
+
+void UnitLICM::BuildUseDefInstMap(Function& F) {
+  for (auto &defInst: instructions(F)) {
+    for (User *U: defInst.users()) {
+      if (Instruction *useInst = dyn_cast<Instruction>(U)) {
+        dbgs() << defInst;
+        dbgs() << " is used in instruction:\n";
+        dbgs() << *useInst << "\n";
+        UseDefInstMap[useInst].push_back(&defInst);
+      }
+    }
+  }
+}
+
+bool UnitLICM::checkIsInstructionInLoop(Instruction *I, Loop loop) {
+  std::set<Instruction *> loopInsts;
+  
+  std::vector<BasicBlock* > blocksInLoop = loop.blocksInLoop;
+  BasicBlock *preHeader = loop.preHeader;
+  for (BasicBlock *block: blocksInLoop) {
+    BasicBlock &BB = *block;
+    for (Instruction &inst: BB) {
+      loopInsts.insert(&inst);
+    }
+  }
+  
+  bool isInstInLoop = false;
+  if (loopInsts.count(I) > 0) {
+    isInstInLoop = true;
+  }
+  return isInstInLoop;
+}
+
 bool UnitLICM::checkIsNoAliasInLoop(AAResults &AA, Instruction &inst, Loop loop) {
   std::vector<BasicBlock* > blocksInLoop = loop.blocksInLoop;
   BasicBlock *preHeader = loop.preHeader;
@@ -73,7 +122,8 @@ bool UnitLICM::checkIsNoAliasInLoop(AAResults &AA, Instruction &inst, Loop loop)
   return true;
 }
 
-void UnitLICM::hoist(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, const TargetLibraryInfo &TLI) {
+void UnitLICM::VisitLoops(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, const TargetLibraryInfo &TLI) {
+  std::set<Instruction *> loopInvariantVariables;
   const Instruction *CtxI; // TODO What is the second parameter for isSafeToSpeculativelyExecute?
 
   std::vector<Loop> allLoopsInFunction = Loops.allLoopsInFunction;
@@ -86,7 +136,7 @@ void UnitLICM::hoist(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, cons
         if (checkIsHandled(inst) == false) {
           continue;
         }
-        
+        dbgs() << inst << "\n";
 
       
         if (inst.isVolatile() == false) {
@@ -95,33 +145,37 @@ void UnitLICM::hoist(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, cons
             if (inst.mayHaveSideEffects() == false) {
               // TODO check if guaranteed to be run at least once because don't want to execute an instruction once that was previously executed zero times 
               // TODO if all arguments are constant or defined out of the loop
-              /*
-              bool allArgumentsConst = true;
+              
+              bool isConstantOrDefinedOutsideLoopOrLoopInvariant = true;
               for (auto &op: inst.operands()) {
                 if (isa<ConstantData>(op)) {
                   
+                } else if (true) {
+                  std::vector<Instruction *> defInsts = UseDefInstMap[&inst];
+                  bool isDefInstInLoop = false;
+                  for (Instruction *defInst: defInsts) {
+                    // TODO how to test values for equality
+                    defInst->getOperand(0)->printAsOperand(dbgs(), false);
+                    dbgs() << op << "\n";
+
+                    // if (defInst->getOperand(0)->equals(op)) {
+                      isDefInstInLoop = isDefInstInLoop || checkIsInstructionInLoop(defInst, loop);
+                    // }
+                  }
                 } else {
-                  allArgumentsConst = false;
+                  isConstantOrDefinedOutsideLoopOrLoopInvariant = false;
                 }
               }
-              */
-              /*
-              for (User *U: inst.users()) {
-                if (Instruction *I = dyn_cast<Instruction>(U)) {
-                  dbgs() << inst;
-                  dbgs() << " is used in instruction:\n";
-                  dbgs() << *I << "\n";
-                }
-              }
-              */
-              // bool shouldHoist = allArgumentsConst;
-              // if (shouldHoist) {}
+              
+              /*if (isConstantOrDefinedOutsideLoopOrLoopInvariant) {
+                loopInvariantVariables.insert(&inst);
+              }*/
               
               // TODO possible segmentation fault
-              inst.eraseFromParent();
-              BasicBlock::iterator BBI = preHeader->end();
-              Instruction &preheader_last_inst = *BBI;
-              inst.insertAfter(&preheader_last_inst);
+              if (isConstantOrDefinedOutsideLoopOrLoopInvariant) {
+                dbgs() << "before erase: " << inst << "\n";
+                hoistInstruction(inst, loop);
+              }
 
             } else if (inst.mayHaveSideEffects() == true) {
               // If an instruction has side effects and is not a Store, leave the instruction as is
@@ -133,11 +187,7 @@ void UnitLICM::hoist(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, cons
                     bool is_store_address_const = isa<ConstantData>(address);
                     bool no_alias_in_loop = checkIsNoAliasInLoop(AA, inst, loop);
                     if (is_store_address_const || no_alias_in_loop) {
-                      // TODO possible segmentation fault
-                      inst.eraseFromParent();
-                      BasicBlock::iterator BBI = preHeader->end();
-                      Instruction &preheader_last_inst = *BBI;
-                      inst.insertAfter(&preheader_last_inst);
+                      hoistInstruction(inst, loop);
 
                     }
 
@@ -156,4 +206,23 @@ void UnitLICM::hoist(UnitLoopInfo &Loops, AAResults &AA, DominatorTree &DT, cons
 void UnitLICM::printStats() {
   dbgs() << "NumHoistedStores: " << NumHoistedStores << " | NumHoistedLoads: " << NumHoistedLoads
   << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
+}
+
+void UnitLICM::hoistInstruction(Instruction &inst, Loop loop) {
+  BasicBlock *preHeader = loop.preHeader;
+
+  // TODO possible segmentation fault
+  inst.eraseFromParent();
+  BasicBlock::iterator BBI = preHeader->end();
+  Instruction &preheader_last_inst = *BBI;
+  inst.insertAfter(&preheader_last_inst);
+
+  unsigned int opcode = inst.getOpcode();
+  if (opcode == Instruction::Load) {
+    NumHoistedLoads++;
+  } else if (opcode == Instruction::Store) {
+    NumHoistedStores++;
+  } else if (checkIsComputationalInstruction(inst)) {
+    NumHoistedComputationalInst++;
+  }
 }
