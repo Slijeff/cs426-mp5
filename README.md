@@ -1,13 +1,14 @@
-From the directory containing this file, execute the following commands
+## How to build
+
+Assuming a build directory is present using the following commands:
 ```
 mkdir build; cd build; cmake ..; make -j
 ```
-This should configure and then build the four passes into a single file ``
-which you'll then need to run with LLVM `opt`.
-Note that you should use the `opt` of LLVM installation that `cmake` found.
-If you're not certain which LLVM that is, search for `LLVM_DIR` in `build/CMakeCache.txt`.
-You can run _just_ your passes like this:
-```
-opt -load-pass-plugin=build/libUnitProject.so -passes="unit-licm,unit-sccp" <input> -o <output>
-```
-which will probably not do much on their own; or use the full optimization sequence given in the PDF.
+simply run `python3 run.py all` to build:
+1. Turns the given c files into IR files using mem2reg and loop-rotate pass.
+2. Turns the given c files into executables (only programs that have main function).
+3. Turns the tests IR files into optimized IR by running sccp and licm separately.
+4. Turns the optimized IR files into executables (only programs that have main function).
+5. Turns custom tests into IR files by running sccp and licm (doesn't compile to executable since our tests don't have main)
+
+Run `python3 run.py clean` to delete all build artifacts.
