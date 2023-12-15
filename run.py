@@ -83,7 +83,7 @@ def compile_official_bin():
     if not os.path.exists(Config.official_bin_output_dir):
         os.mkdir(Config.official_bin_output_dir)
     # only compile to binary if the program has main function
-    has_main = ["almabench", "fannkuch", "n-body", "nsieve-bits", "partialsums", "PR491", "puzzle", "recursive",
+    has_main = ["almabench", "fannkuch", "ffbench", "n-body", "nsieve-bits", "partialsums", "PR491", "puzzle", "recursive",
                 "spectral-norm"]
     for sf in src_files:
         if not any([m in sf for m in has_main]): continue
@@ -99,7 +99,7 @@ def compile_sccp_official_bin():
         os.mkdir(Config.sccp_output_bin_dir)
     src_files = glob(os.path.join(Config.sccp_output_ll_dir, "*.ll"))
     # only compile to binary if the program has main function
-    has_main = ["almabench", "fannkuch", "n-body", "nsieve-bits", "partialsums", "PR491", "puzzle", "recursive",
+    has_main = ["almabench", "fannkuch", "ffbench", "n-body", "nsieve-bits", "partialsums", "PR491", "puzzle", "recursive",
                 "spectral-norm"]
     for sf in src_files:
         if not any([m in sf for m in has_main]): continue
@@ -130,7 +130,7 @@ def compile_licm_bin():
         os.mkdir(Config.licm_output_bin_dir)
     src_files = glob(os.path.join(Config.licm_output_ll_dir, "*.ll"))
     # only compile to binary if the program has main function
-    has_main = ["almabench", "fannkuch", "n-body", "nsieve-bits", "partialsums", "PR491", "puzzle", "recursive",
+    has_main = ["almabench", "fannkuch", "ffbench", "n-body", "nsieve-bits", "partialsums", "PR491", "puzzle", "recursive",
                 "spectral-norm"]
     for sf in src_files:
         if not any([m in sf for m in has_main]): continue
