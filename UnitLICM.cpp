@@ -2,6 +2,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "UnitLICM.h"
+#include "llvm/IR/Instructions.h"
 // #include "UnitLoopInfo.h"
 
 #define DEBUG_TYPE UnitLICM
@@ -53,22 +54,24 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
   for (auto I : markedInvariants) {
     if (domAllExits(*I, *invariantToLoop[I], DT)) {
       moveToPreheader(*I, *invariantToLoop[I]);
-      
-      unsigned int opcode = I->getOpcode();
-      if (opcode == Instruction::Load) {
+
+      if (isa<LoadInst>(I)) {
         NumHoistedLoads++;
-      } else if (opcode == Instruction::Store) {
+      } else if (isa<StoreInst>(I)) {
         NumHoistedStores++;
-      } else if (checkIsComputationalInstruction(*I)) {
+      } else {
         NumHoistedComputationalInst++;
       }
     }
   }
 
-  dbgs() << "NumHoistedComputationalInst: " << NumHoistedComputationalInst <<"\n\n";
+//  dbgs() << "NumHoistedComputationalInst: " << NumHoistedComputationalInst <<"\n\n";
+  printStats();
+  dbgs() << "\n";
   // Set proper preserved analyses
   return PreservedAnalyses::all();
 }
+
 bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
   // assume an instruction is invariant until proven otherwise
   bool is_invariant = true;
@@ -91,7 +94,7 @@ bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
   }
   return is_invariant &&
       isSafeToSpeculativelyExecute(&i) &&
-      !i.mayReadFromMemory();// TODO: should handle load and store using AliasAnalysis
+      !hasAlias(i, loop, AA);
 }
 
 // Since loop-rotate pass ensures only one exit, we only need to check if current BB dominates that exit
@@ -121,5 +124,24 @@ bool UnitLICM::checkIsComputationalInstruction(Instruction &I) {
 
 void UnitLICM::printStats() {
   dbgs() << "NumHoistedStores: " << NumHoistedStores << " | NumHoistedLoads: " << NumHoistedLoads
-  << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
+         << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
+}
+bool UnitLICM::hasAlias(Instruction &inst, Loop &loop, AAResults &AA) {
+  for (auto BB : loop.blocksInLoop) {
+    for (auto &otherI : *BB) {
+      if (!isa<LoadInst>(otherI) || !isa<StoreInst>(otherI) || &otherI == &inst) continue;
+      if (auto instStore = dyn_cast<StoreInst>(&inst)) {
+
+        if (auto otherLoad = dyn_cast<LoadInst>(&otherI)) {
+          return !AA.isNoAlias(instStore->getPointerOperand(), otherLoad->getPointerOperand());
+        }
+
+        if (auto otherStore = dyn_cast<StoreInst>(&otherI)) {
+          return !AA.isNoAlias(instStore->getPointerOperand(), otherStore->getPointerOperand());
+        }
+
+      }
+    }
+  }
+  return false;
 }
