@@ -19,11 +19,16 @@ class Config:
     sccp_output_ll_dir = "./sccp_output_ll"
     sccp_output_bin_dir = "./sccp_output_bin"
 
+    licm_output_ll_dir = "./licm_output_ll"
+    licm_output_bin_dir = "./licm_output_bin"
+
     clean_opt_output = [
         official_bin_output_dir,
         official_ll_output_dir,
         sccp_output_bin_dir,
-        sccp_output_ll_dir
+        sccp_output_ll_dir,
+        licm_output_bin_dir,
+        licm_output_ll_dir
     ]
 
 
@@ -95,6 +100,36 @@ def compile_sccp_official_bin():
         subprocess.run(
             ["clang-15", "-lm", sf, "-o", os.path.join(Config.sccp_output_bin_dir, filename)])
 
+def compile_licm_ll():
+    print("Running LICM to generate optimized ll...")
+    if not os.path.exists(Config.licm_output_ll_dir):
+        os.mkdir(Config.licm_output_ll_dir)
+    unopt_files = [os.path.join(Config.official_ll_output_dir, file) for file in
+                   os.listdir(Config.official_ll_output_dir) if file.endswith('.ll')]
+    opt_files = [os.path.join(Config.licm_output_ll_dir, os.path.splitext(file)[0] + '_opt.ll') for file in
+                 os.listdir(Config.official_ll_output_dir) if file.endswith('.ll')]
+
+    outfile = open(os.path.join(Config.licm_output_ll_dir, "output.txt"), "w")
+    for fro, to in zip(unopt_files, opt_files):
+        subprocess.run(
+            ['opt-15', '-load-pass-plugin=./build/libUnitProject.so', '-passes=unit-licm', fro, '-S', '-o', to],
+            stderr=outfile)
+    outfile.close()
+
+def compile_licm_bin():
+    print("Compiling optimized ll to executables...")
+    if not os.path.exists(Config.licm_output_bin_dir):
+        os.mkdir(Config.licm_output_bin_dir)
+    src_files = glob(os.path.join(Config.licm_output_ll_dir, "*.ll"))
+    # only compile to binary if the program has main function
+    has_main = ["almabench", "fannkuch", "n-body", "nsieve-bits", "partialsums", "PR491", "puzzle", "recursive",
+                "spectral-norm"]
+    for sf in src_files:
+        if not any([m in sf for m in has_main]): continue
+        filename = os.path.split(sf)[1]
+        filename = filename.replace(".ll", ".out")
+        subprocess.run(
+            ["clang-15", "-lm", sf, "-o", os.path.join(Config.licm_output_bin_dir, filename)])
 def main():
     if len(sys.argv) != 2:
         print("Usage: python3 run.py <function>")
@@ -102,19 +137,24 @@ def main():
 
     function_name = sys.argv[1]
 
-    if function_name == 'compile-official-ll':
+    if function_name == 'official-ll':
         compile_official_ll()
-    elif function_name == 'compile-sccp':
+    elif function_name == 'sccp-ll':
         compile_sccp_official_ll()
-    elif function_name == 'compile-official-bin':
+    elif function_name == 'official-bin':
         compile_official_bin()
-    elif function_name == 'compile-sccp-bin':
+    elif function_name == 'sccp-bin':
         compile_sccp_official_bin()
+    elif function_name == 'licm-ll':
+        compile_licm_ll()
+    elif function_name == 'licm-bin':
+        compile_licm_bin()
     elif function_name == 'all':
         compile_official_ll()
         compile_official_bin()
         compile_sccp_official_ll()
         compile_sccp_official_bin()
+        compile_licm_ll()
     elif function_name == 'clean':
         subprocess.run(["rm -rf " + " ".join(Config.clean_opt_output)], shell=True)
     else:

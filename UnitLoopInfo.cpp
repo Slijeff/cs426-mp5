@@ -39,7 +39,7 @@ UnitLoopInfo UnitLoopAnalysis::run(Function &F, FunctionAnalysisManager &FAM)
     }
   }
 
-  printBackEdgesToDebug(AllBackEdges);
+//  printBackEdgesToDebug(AllBackEdges);
   for (auto [end, start] : AllBackEdges)
   {
     Loop singleLoopInfo = {};
@@ -54,7 +54,7 @@ UnitLoopInfo UnitLoopAnalysis::run(Function &F, FunctionAnalysisManager &FAM)
     Loops.allLoopsInFunction.push_back(singleLoopInfo);
   }
 
-  printAllLoops(Loops);
+//  printAllLoops(Loops);
   return Loops;
 }
 

@@ -17,7 +17,7 @@ using namespace cs426;
     std::find(list.begin(), list.end(), elem) != list.end()
 /// Main function for running the LICM optimization
 PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
-  dbgs() << "UnitLICM running on " << F.getName() << "\n";
+  dbgs() << "UnitLICM running on " << F.getParent()->getSourceFileName() << " -- " << F.getName() << "\n";
   // Acquires the UnitLoopInfo object constructed by your Loop Identification
   // (LoopAnalysis) pass
   UnitLoopInfo &Loops = FAM.getResult<UnitLoopAnalysis>(F);
@@ -53,11 +53,11 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
   for (auto I : markedInvariants) {
     if (domAllExits(*I, *invariantToLoop[I], DT)) {
       moveToPreheader(*I, *invariantToLoop[I]);
-      outs() << "moving out instruction: " << NumHoistedComputationalInst << " : " << *I << "\n";
       NumHoistedComputationalInst++; // TODO: properly compute statistics
     }
   }
 
+  dbgs() << "NumHoisedComputationalInst: " << NumHoistedComputationalInst <<"\n\n";
   // Set proper preserved analyses
   return PreservedAnalyses::all();
 }
