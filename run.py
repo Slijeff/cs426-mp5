@@ -155,6 +155,7 @@ def main():
         compile_sccp_official_ll()
         compile_sccp_official_bin()
         compile_licm_ll()
+        compile_licm_bin()
     elif function_name == 'clean':
         subprocess.run(["rm -rf " + " ".join(Config.clean_opt_output)], shell=True)
     else:
