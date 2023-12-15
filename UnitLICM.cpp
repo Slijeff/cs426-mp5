@@ -53,14 +53,18 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
   // TODO: correctly compute the preheader for the inner loop to be the preheader of the outer loop, possibly in UnitLoopInfo
   for (auto I : markedInvariants) {
     if (domAllExits(*I, *invariantToLoop[I], DT)) {
-      moveToPreheader(*I, *invariantToLoop[I]);
+      if (checkIsHandled(*I)) {
+        moveToPreheader(*I, *invariantToLoop[I]);
 
-      if (isa<LoadInst>(I)) {
-        NumHoistedLoads++;
-      } else if (isa<StoreInst>(I)) {
-        NumHoistedStores++;
-      } else if (checkIsComputationalInstruction(*I)) {
-        NumHoistedComputationalInst++;
+        // dbgs() << *I << "\n";
+
+        if (isa<LoadInst>(I)) {
+          NumHoistedLoads++;
+        } else if (isa<StoreInst>(I)) {
+          NumHoistedStores++;
+        } else if (checkIsComputationalInstruction(*I)) {
+          NumHoistedComputationalInst++;
+        }
       }
     }
   }
@@ -143,4 +147,32 @@ bool UnitLICM::hasAlias(Instruction &inst, Loop &loop, AAResults &AA) {
     }
   }
   return false;
+}
+
+bool UnitLICM::checkIsHandled(Instruction &I) {
+  bool isHandled = false;
+  unsigned int opcode = I.getOpcode();
+  if (I.isUnaryOp()) {
+    isHandled = true;
+  } else if (I.isBinaryOp()) {
+    isHandled = true;
+  } else if (I.isShift() || I.isBitwiseLogicOp()) {
+    isHandled = true;
+  } else if (opcode == Instruction::BitCast) {
+    isHandled = true;
+  } else if (opcode == Instruction::ICmp) {
+    isHandled = true;
+  } else if (opcode == Instruction::FCmp) {
+    isHandled = true;
+  } else if (opcode == Instruction::Select) {
+    isHandled = true;
+  } else if (opcode == Instruction::GetElementPtr) {
+    isHandled = true;
+  } else if (opcode == Instruction::Load) {
+    isHandled = true;
+  } else if (opcode == Instruction::Store) {
+    isHandled = true;
+  }
+
+  return isHandled;
 }
