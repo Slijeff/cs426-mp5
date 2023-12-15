@@ -92,9 +92,20 @@ bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
       }
     }
   }
-  return is_invariant &&
-      isSafeToSpeculativelyExecute(&i) &&
-      !hasAlias(i, loop, AA);
+  if (!isa<StoreInst>(i)) {
+    return is_invariant &&
+        isSafeToSpeculativelyExecute(&i) &&
+        !hasAlias(i, loop, AA) &&
+        (i.mayHaveSideEffects() == false) &&
+        (i.isVolatile() == false);
+  }
+  // mayHaveSideEffects is true for stores. isSafeToSpeculativelyExecute is false for stores
+  if (isa<StoreInst>(i)) {
+    return is_invariant &&
+    !hasAlias(i, loop, AA) &&
+    (i.isVolatile() == false);
+  }
+  
 }
 
 // Since loop-rotate pass ensures only one exit, we only need to check if current BB dominates that exit
