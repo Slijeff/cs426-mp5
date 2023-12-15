@@ -53,11 +53,19 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
   for (auto I : markedInvariants) {
     if (domAllExits(*I, *invariantToLoop[I], DT)) {
       moveToPreheader(*I, *invariantToLoop[I]);
-      NumHoistedComputationalInst++; // TODO: properly compute statistics
+      
+      unsigned int opcode = I->getOpcode();
+      if (opcode == Instruction::Load) {
+        NumHoistedLoads++;
+      } else if (opcode == Instruction::Store) {
+        NumHoistedStores++;
+      } else if (checkIsComputationalInstruction(*I)) {
+        NumHoistedComputationalInst++;
+      }
     }
   }
 
-  dbgs() << "NumHoisedComputationalInst: " << NumHoistedComputationalInst <<"\n\n";
+  dbgs() << "NumHoistedComputationalInst: " << NumHoistedComputationalInst <<"\n\n";
   // Set proper preserved analyses
   return PreservedAnalyses::all();
 }
@@ -93,4 +101,25 @@ bool UnitLICM::domAllExits(Instruction &inst, Loop &loop, DominatorTree &DT) {
 void UnitLICM::moveToPreheader(Instruction &inst, Loop &loop) {
   auto preheader = loop.preHeader;
   inst.moveBefore(preheader->getTerminator());
+}
+
+bool UnitLICM::checkIsComputationalInstruction(Instruction &I) {
+  bool isComputationalInstruction = true;
+  unsigned int opcode = I.getOpcode();
+  if (opcode == Instruction::BitCast) {
+    isComputationalInstruction = false;
+  } else if (opcode == Instruction::GetElementPtr) {
+    isComputationalInstruction = false;
+  } else if (opcode == Instruction::Load) {
+    isComputationalInstruction = false;
+  } else if (opcode == Instruction::Store) {
+    isComputationalInstruction = false;
+  }
+
+  return isComputationalInstruction;
+}
+
+void UnitLICM::printStats() {
+  dbgs() << "NumHoistedStores: " << NumHoistedStores << " | NumHoistedLoads: " << NumHoistedLoads
+  << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
 }

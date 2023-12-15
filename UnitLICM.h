@@ -29,6 +29,8 @@ public:
   bool isInvariant(Instruction &inst, Loop &loop, AAResults &AA);
   bool domAllExits(Instruction &inst, Loop &loop, DominatorTree &DT);
   void moveToPreheader(Instruction &inst, Loop &loop);
+  bool checkIsComputationalInstruction(Instruction &I);
+  void printStats();
 
   size_t NumHoistedStores;
   size_t NumHoistedLoads;
