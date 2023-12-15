@@ -72,7 +72,7 @@ void UnitSCCP::visitInstruction(Instruction &i) {
     visitPhi(cast<PHINode>(i), curLattice);
   } else if (isa<BranchInst>(i)) {
     visitBranch(cast<BranchInst>(i));
-  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i)) {
+  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i) || isa<SelectInst>(i)) {
     visitFoldable(i, curLattice);
   } else {
     curLattice.status = LatticeStatus::BOTTOM;
@@ -148,6 +148,12 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
     if (e1 != nullptr && e2 != nullptr) {
       folded = calculateBinaryOp(cast<BinaryOperator>(i), e1, e2);
+    }
+  } else if (isa<SelectInst>(i)) {
+    auto *e1 = lattice_map.get(i.getOperand(0)).constant;
+    auto *e2 = lattice_map.get(i.getOperand(1)).constant;
+    if (e1 != nullptr && e2 != nullptr) {
+      folded = calculateSelect(cast<SelectInst>(i), e1, e2);
     }
   } else {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
@@ -265,5 +271,14 @@ void UnitSCCP::eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, Basic
     return;
   }
   NumDeadBlocks++;
+}
+ConstantData *UnitSCCP::calculateSelect(SelectInst &inst, ConstantData *e1, ConstantData *e2) {
+  auto cond = lattice_map.get(inst.getCondition());
+  if (cond.isBottom() || cond.isTop()) return nullptr;
+  if (auto cd = dyn_cast<ConstantInt>(cond.constant)) {
+    auto res = cd->getZExtValue() == 1 ? e1 : e2;
+    return res;
+  }
+  return nullptr;
 }
 
