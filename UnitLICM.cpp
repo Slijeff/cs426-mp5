@@ -29,6 +29,9 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
   const TargetLibraryInfo &TLI = FAM.getResult<TargetLibraryAnalysis>(F);
 
   // Begin optimization
+  NumHoistedStores = 0;
+  NumHoistedLoads = 0;
+  NumHoistedComputationalInst = 0;
   markedInvariants.clear();
 
   bool has_changed;
