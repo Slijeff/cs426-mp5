@@ -59,7 +59,7 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
         NumHoistedLoads++;
       } else if (isa<StoreInst>(I)) {
         NumHoistedStores++;
-      } else {
+      } else if (checkIsComputationalInstruction(*I)) {
         NumHoistedComputationalInst++;
       }
     }
@@ -107,19 +107,7 @@ void UnitLICM::moveToPreheader(Instruction &inst, Loop &loop) {
 }
 
 bool UnitLICM::checkIsComputationalInstruction(Instruction &I) {
-  bool isComputationalInstruction = true;
-  unsigned int opcode = I.getOpcode();
-  if (opcode == Instruction::BitCast) {
-    isComputationalInstruction = false;
-  } else if (opcode == Instruction::GetElementPtr) {
-    isComputationalInstruction = false;
-  } else if (opcode == Instruction::Load) {
-    isComputationalInstruction = false;
-  } else if (opcode == Instruction::Store) {
-    isComputationalInstruction = false;
-  }
-
-  return isComputationalInstruction;
+  return !isa<GetElementPtrInst>(I) && !isa<CastInst>(I);
 }
 
 void UnitLICM::printStats() {

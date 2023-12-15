@@ -178,7 +178,7 @@ def compile_custom_licm():
                    os.listdir(Config.custom_test_output_dir) if file.endswith('.ll')]
     opt_files = [os.path.join(Config.licm_custom_tests_dir, os.path.splitext(file)[0] + '_opt.ll') for file in
                  os.listdir(Config.custom_test_output_dir) if file.endswith('.ll')]
-    outfile = open(os.path.join(Config.licm_output_ll_dir, "output.txt"), "w")
+    outfile = open(os.path.join(Config.licm_custom_tests_dir, "output.txt"), "w")
     for fro, to in zip(unopt_files, opt_files):
         subprocess.run(
             ['opt-15', '-load-pass-plugin=./build/libUnitProject.so', '-passes=unit-licm', fro, '-S', '-o', to],
