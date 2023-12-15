@@ -28,7 +28,6 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
   DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
   const TargetLibraryInfo &TLI = FAM.getResult<TargetLibraryAnalysis>(F);
 
-
   // Begin optimization
   markedInvariants.clear();
 
@@ -54,22 +53,23 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
   for (auto I : markedInvariants) {
     if (domAllExits(*I, *invariantToLoop[I], DT)) {
       if (checkIsHandled(*I)) {
-        moveToPreheader(*I, *invariantToLoop[I]);
+        if (I->getParent() != invariantToLoop[I]->preHeader) {
+          moveToPreheader(*I, *invariantToLoop[I]);
 
-        // dbgs() << *I << "\n";
+          //dbgs()<<"moving: " << *I << "\n";
 
-        if (isa<LoadInst>(I)) {
-          NumHoistedLoads++;
-        } else if (isa<StoreInst>(I)) {
-          NumHoistedStores++;
-        } else if (checkIsComputationalInstruction(*I)) {
-          NumHoistedComputationalInst++;
+          if (isa<LoadInst>(I)) {
+            NumHoistedLoads++;
+          } else if (isa<StoreInst>(I)) {
+            NumHoistedStores++;
+          } else if (checkIsComputationalInstruction(*I)) {
+            NumHoistedComputationalInst++;
+          }
         }
       }
     }
   }
 
-//  dbgs() << "NumHoistedComputationalInst: " << NumHoistedComputationalInst <<"\n\n";
   printStats();
   dbgs() << "\n";
   // Set proper preserved analyses
