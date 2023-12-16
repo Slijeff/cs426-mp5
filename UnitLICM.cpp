@@ -86,6 +86,18 @@ bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
     auto *val = dyn_cast<Value>(op);
     // If the operand is not a constant or not an argument to the current function,
     // then it has the possibility to become a variant
+    if (isa<ConstantFP>(val)) {
+      if (auto *inst = dyn_cast<Instruction>(val)) {
+        // If the operand is not an invariant, and it cannot be found outside the loop
+        // then it's definitely not an invariant
+        if (NOTFOUND(markedInvariants, inst) && FOUND(loop.blocksInLoop, inst->getParent())) {
+          is_invariant = false;
+        }
+      } else {
+        // In the case that it's not a valid instruction
+        is_invariant = false;
+      }
+    }
     if (!isa<Constant>(val) && !isa<Argument>(val)) {
       if (auto *inst = dyn_cast<Instruction>(val)) {
         // If the operand is not an invariant, and it cannot be found outside the loop
