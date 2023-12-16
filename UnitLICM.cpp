@@ -84,8 +84,6 @@ bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
   bool is_invariant = true;
   for (auto &op : i.operands()) {
     auto *val = dyn_cast<Value>(op);
-    // If the operand is not a constant or not an argument to the current function,
-    // then it has the possibility to become a variant
     if (isa<ConstantFP>(val)) {
       if (auto *inst = dyn_cast<Instruction>(val)) {
         // If the operand is not an invariant, and it cannot be found outside the loop
@@ -98,6 +96,8 @@ bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
         is_invariant = false;
       }
     }
+    // If the operand is not a constant or not an argument to the current function,
+    // then it has the possibility to become a variant
     if (!isa<Constant>(val) && !isa<Argument>(val)) {
       if (auto *inst = dyn_cast<Instruction>(val)) {
         // If the operand is not an invariant, and it cannot be found outside the loop
@@ -137,13 +137,14 @@ void UnitLICM::moveToPreheader(Instruction &inst, Loop &loop) {
 }
 
 bool UnitLICM::checkIsComputationalInstruction(Instruction &I) {
-  return !isa<GetElementPtrInst>(I) && !isa<CastInst>(I);
+  return !isa<LoadInst>(I) && !isa<StoreInst>(I) && !isa<GetElementPtrInst>(I) && !isa<CastInst>(I);
 }
 
 void UnitLICM::printStats() {
   dbgs() << "NumHoistedStores: " << NumHoistedStores << " | NumHoistedLoads: " << NumHoistedLoads
          << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
 }
+
 bool UnitLICM::hasAlias(Instruction &inst, Loop &loop, AAResults &AA) {
   for (auto BB : loop.blocksInLoop) {
     for (auto &otherI : *BB) {
