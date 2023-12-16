@@ -150,8 +150,9 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
       folded = calculateBinaryOp(cast<BinaryOperator>(i), e1, e2);
     }
   } else if (isa<SelectInst>(i)) {
-    auto *e1 = lattice_map.get(i.getOperand(0)).constant;
-    auto *e2 = lattice_map.get(i.getOperand(1)).constant;
+    SelectInst *inst = dyn_cast<SelectInst>(&i);
+    auto *e1 = lattice_map.get(inst->getTrueValue()).constant;
+    auto *e2 = lattice_map.get(inst->getFalseValue()).constant;
     if (e1 != nullptr && e2 != nullptr) {
       folded = calculateSelect(cast<SelectInst>(i), e1, e2);
     }
