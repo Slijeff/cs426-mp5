@@ -245,7 +245,7 @@ void UnitSCCP::replaceConsts(Function &F) {
     }
   }
   NumInstRemoved += remove.size();
-  for (auto i : remove) i->removeFromParent();
+  for (auto i : remove) { i->eraseFromParent(); }
 
   for (auto &BB : F) {
     auto *brInst = dyn_cast<BranchInst>(BB.getTerminator());
@@ -266,7 +266,7 @@ void UnitSCCP::replaceConsts(Function &F) {
 }
 void UnitSCCP::eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, BasicBlock *invalid) {
   BranchInst::Create(jmp, inst);
-  inst->removeFromParent();
+  inst->eraseFromParent();
   if (jmp == invalid) {
     return;
   }
