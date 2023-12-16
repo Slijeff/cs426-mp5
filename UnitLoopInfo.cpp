@@ -45,8 +45,12 @@ UnitLoopInfo UnitLoopAnalysis::run(Function &F, FunctionAnalysisManager &FAM)
     Loop singleLoopInfo = {};
     singleLoopInfo.loopStart = start;
     singleLoopInfo.loopEnd = end;
-    // FIXME: double check the definition of preheader
-    singleLoopInfo.preHeader = DT.getNode(end)->getIDom()->getIDom()->getBlock();
+    if (start == end) {
+      singleLoopInfo.preHeader = DT.getNode(end)->getIDom()->getBlock();
+    } else {
+      // FIXME: double check the definition of preheader
+      singleLoopInfo.preHeader = DT.getNode(end)->getIDom()->getIDom()->getBlock();
+    }
     std::set<BasicBlock *> visited = {start};
     std::vector<BasicBlock *> loopBlocks = {start};
     findPred(end, visited, loopBlocks);
