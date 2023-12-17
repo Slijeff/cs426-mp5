@@ -5,8 +5,7 @@
 #include "llvm/IR/InstIterator.h"
 #include "UnitSCCP.h"
 
-//#define DEBUG_TYPE UnitSCCP
-#define DEBUG_TYPE "UnitSCCP"
+#define DEBUG_TYPE UnitSCCP
 
 using namespace llvm;
 using namespace cs426;
@@ -28,8 +27,8 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
   size_t ssaIndex = 0;
 
   while (cfgIndex < CFGWorklist.size() || ssaIndex < SSAWorklist.size()) {
-    while (cfgIndex < CFGWorklist.size()) processCFG(cfgIndex++);
-    while (ssaIndex < SSAWorklist.size()) processSSA(ssaIndex++);
+    while (cfgIndex < CFGWorklist.size()) processCFG(cfgIndex++, F, FAM);
+    while (ssaIndex < SSAWorklist.size()) processSSA(ssaIndex++, F, FAM);
   }
 
 //  dbgs() << lattice_map;
@@ -40,7 +39,7 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
 }
 
 // Process an item in the CFG worklist
-void UnitSCCP::processCFG(size_t cfgIndex) {
+void UnitSCCP::processCFG(size_t cfgIndex, Function &F, FunctionAnalysisManager &FAM) {
 //  dbgs() << "processing cfg at index: " << cfgIndex << "\n";
   auto [prevBB, curBB] = CFGWorklist[cfgIndex];
   // we only iterate every edge once
@@ -48,23 +47,23 @@ void UnitSCCP::processCFG(size_t cfgIndex) {
   Visited.insert({prevBB, curBB});
 
   for (auto &i : *curBB) {
-    visitInstruction(i);
+    visitInstruction(i, F, FAM);
   }
 }
 
-void UnitSCCP::processSSA(size_t ssaIndex) {
+void UnitSCCP::processSSA(size_t ssaIndex, Function &F, FunctionAnalysisManager &FAM) {
 //  dbgs() << "processing ssa at index: " << ssaIndex << "\n";
   auto *instruction = SSAWorklist[ssaIndex];
   auto *BB = instruction->getParent();
   for (auto pred : predecessors(BB)) {
     if (Visited.count({pred, BB}) != 0) {
-      visitInstruction(*instruction);
+      visitInstruction(*instruction, F, FAM);
       break;
     }
   }
 }
 
-void UnitSCCP::visitInstruction(Instruction &i) {
+void UnitSCCP::visitInstruction(Instruction &i, Function &F, FunctionAnalysisManager &FAM) {
   auto prevLattice = lattice_map.get(&i);
   auto curLattice = prevLattice;
 
@@ -72,8 +71,8 @@ void UnitSCCP::visitInstruction(Instruction &i) {
     visitPhi(cast<PHINode>(i), curLattice);
   } else if (isa<BranchInst>(i)) {
     visitBranch(cast<BranchInst>(i));
-  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i) || isa<SelectInst>(i)) {
-    visitFoldable(i, curLattice);
+  } else if (isa<BinaryOperator>(i) || isa<UnaryOperator>(i) || isa<CmpInst>(i) || isa<SelectInst>(i) || isa<BitCastInst>(i)) {
+    visitFoldable(i, curLattice, F, FAM);
   } else {
     curLattice.status = LatticeStatus::BOTTOM;
   }
@@ -131,13 +130,25 @@ void UnitSCCP::visitBranch(BranchInst &i) {
   }
 
 }
-void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus) {
+void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus, Function &F, FunctionAnalysisManager &FAM) {
 //  dbgs() << "Got Foldable node: ";
 //  i.print(dbgs(), true);
 //  dbgs() << "\n";
 
   Constant *folded = nullptr;
-  if (isa<CmpInst>(i)) {
+  if (isa<BitCastInst>(i)) {
+    BitCastInst *inst = dyn_cast<BitCastInst>(&i);
+    Value *op = inst->getOperand(0);
+    Type *ty = inst->getDestTy();
+    const SimplifyQuery &Q = getBestSimplifyQuery(FAM, F);
+    Value *value = simplifyCastInst(Instruction::BitCast, op, ty, Q);
+    if (value != nullptr) {
+      NumInstReplaced += i.getNumUses();
+      i.replaceAllUsesWith(value);
+      i.eraseFromParent();
+    }
+  }
+  else if (isa<CmpInst>(i)) {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
     if (e1 != nullptr && e2 != nullptr) {
