@@ -3,7 +3,6 @@
 
 #include "UnitLICM.h"
 #include "llvm/IR/Instructions.h"
-// #include "UnitLoopInfo.h"
 
 #define DEBUG_TYPE UnitLICM
 // Define any statistics here
@@ -58,8 +57,6 @@ PreservedAnalyses UnitLICM::run(Function &F, FunctionAnalysisManager &FAM) {
       if (checkIsHandled(*I)) {
         if (I->getParent() != invariantToLoop[I]->preHeader) {
           moveToPreheader(*I, *invariantToLoop[I]);
-
-          //dbgs()<<"moving: " << *I << "\n";
 
           if (isa<LoadInst>(I)) {
             NumHoistedLoads++;
@@ -135,7 +132,7 @@ bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
       (i.isVolatile() == false) &&
       checkLoadStoreType(i);
   }
-  // mayHaveSideEffects is true for stores. isSafeToSpeculativelyExecute is false for stores
+  
   if (isa<StoreInst>(i)) {
     return is_invariant &&
     !hasAlias(i, loop, AA) &&
@@ -166,17 +163,31 @@ void UnitLICM::printStats() {
 bool UnitLICM::hasAlias(Instruction &inst, Loop &loop, AAResults &AA) {
   for (auto BB : loop.blocksInLoop) {
     for (auto &otherI : *BB) {
-      if (!isa<LoadInst>(otherI) || !isa<StoreInst>(otherI) || &otherI == &inst) continue;
-      if (auto instStore = dyn_cast<StoreInst>(&inst)) {
+      if (&otherI == &inst) { continue; }
+      if (isa<StoreInst>(inst)) {
+        if (auto instStore = dyn_cast<StoreInst>(&inst)) {
+
+          if (auto otherLoad = dyn_cast<LoadInst>(&otherI)) {
+            return !AA.isNoAlias(instStore->getPointerOperand(), otherLoad->getPointerOperand());
+          }
+
+          if (auto otherStore = dyn_cast<StoreInst>(&otherI)) {
+            return !AA.isNoAlias(instStore->getPointerOperand(), otherStore->getPointerOperand());
+          }
+          return !AA.isNoAlias(instStore->getPointerOperand(), &otherI);
+        }
+      }
+
+      if (auto instLoad = dyn_cast<LoadInst>(&inst)) {
 
         if (auto otherLoad = dyn_cast<LoadInst>(&otherI)) {
-          return !AA.isNoAlias(instStore->getPointerOperand(), otherLoad->getPointerOperand());
+          return !AA.isNoAlias(instLoad->getPointerOperand(), otherLoad->getPointerOperand());
         }
 
         if (auto otherStore = dyn_cast<StoreInst>(&otherI)) {
-          return !AA.isNoAlias(instStore->getPointerOperand(), otherStore->getPointerOperand());
+          return !AA.isNoAlias(instLoad->getPointerOperand(), otherStore->getPointerOperand());
         }
-
+        return !AA.isNoAlias(instLoad->getPointerOperand(), &otherI);
       }
     }
   }
@@ -214,6 +225,10 @@ bool UnitLICM::checkIsHandled(Instruction &I) {
 bool UnitLICM::checkLoadStoreType(Instruction &inst) {
   bool is_constant = false;
   Type *type = inst.getType();
+  if (isa<StoreInst>(inst)) {
+    StoreInst *storeInst = dyn_cast<StoreInst>(&inst);
+    type = storeInst->getValueOperand()->getType();
+  }
   if (type->isIntegerTy()) {
     is_constant = true;
   }

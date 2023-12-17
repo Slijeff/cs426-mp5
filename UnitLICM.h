@@ -9,7 +9,6 @@
 #include <map>
 #include <set>
 
-
 #include "UnitLoopInfo.h"
 
 using namespace llvm;
@@ -20,11 +19,8 @@ struct UnitLICM : PassInfoMixin<UnitLICM> {
   PreservedAnalyses run(Function& F, FunctionAnalysisManager& FAM);
 
 public:
-//  std::map<Instruction *, std::vector<Instruction *>> UseDefInstMap;
-
   std::vector<Instruction*> markedInvariants;
   std::map<Instruction*, Loop*> invariantToLoop;
-
 
   bool isInvariant(Instruction &inst, Loop &loop, AAResults &AA);
   bool domAllExits(Instruction &inst, Loop &loop, DominatorTree &DT);
