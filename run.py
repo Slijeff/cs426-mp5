@@ -66,11 +66,8 @@ def compile_sccp_official_ll():
     opt_files = [os.path.join(Config.sccp_output_ll_dir, os.path.splitext(file)[0] + '_opt.ll') for file in
                  os.listdir(Config.official_ll_output_dir) if file.endswith('.ll')]
 
-    exclude = ["partialsums", "recursive"]
     outfile = open(os.path.join(Config.sccp_output_ll_dir, "output.txt"), "w")
     for fro, to in zip(unopt_files, opt_files):
-        if any([excl in fro for excl in exclude]):
-            continue
         subprocess.run(
             ['opt-15', '-load-pass-plugin=./build/libUnitProject.so', '-passes=unit-sccp', fro, '-S', '-o', to],
             stderr=outfile)
