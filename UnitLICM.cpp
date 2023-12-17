@@ -111,7 +111,16 @@ bool UnitLICM::isInvariant(Instruction &i, Loop &loop, AAResults &AA) {
       }
     }
   }
-  if (!isa<StoreInst>(i) && !isa<LoadInst>(i)) {
+  
+  if (isa<GetElementPtrInst>(i)) {
+    return is_invariant &&
+        isSafeToSpeculativelyExecute(&i) &&
+        !hasAlias(i, loop, AA) &&
+        (i.mayHaveSideEffects() == false) &&
+        (i.isVolatile() == false) &&
+        checkGetElementPtrType(i);
+  }
+  if (!i.mayReadOrWriteMemory()) {
     return is_invariant &&
         isSafeToSpeculativelyExecute(&i) &&
         !hasAlias(i, loop, AA) &&
@@ -152,15 +161,6 @@ bool UnitLICM::checkIsComputationalInstruction(Instruction &I) {
 void UnitLICM::printStats() {
   dbgs() << "NumHoistedStores: " << NumHoistedStores << " | NumHoistedLoads: " << NumHoistedLoads
          << " | NumHoistedComputationalInst: " << NumHoistedComputationalInst << "\n";
-}
-
-bool UnitLICM::checkLoadStoreType(Instruction &inst) {
-  bool is_constant = true;
-  Type *type = inst.getType();
-  if (type->isVectorTy()) {
-    is_constant = false;
-  } 
-  return is_constant;
 }
 
 bool UnitLICM::hasAlias(Instruction &inst, Loop &loop, AAResults &AA) {
@@ -209,4 +209,33 @@ bool UnitLICM::checkIsHandled(Instruction &I) {
   }
 
   return isHandled;
+}
+
+bool UnitLICM::checkLoadStoreType(Instruction &inst) {
+  bool is_constant = false;
+  Type *type = inst.getType();
+  if (type->isIntegerTy()) {
+    is_constant = true;
+  }
+  if (type->isFloatingPointTy()) {
+    is_constant = true;
+  } 
+  if (type->isVectorTy()) {
+    is_constant = false;
+  } 
+  
+  return is_constant;
+}
+
+bool UnitLICM::checkGetElementPtrType(Instruction &inst) {
+  GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(&inst);
+  bool is_constant = false;
+  Type *type = gep->getSourceElementType();
+  if (type->isIntegerTy()) {
+    is_constant = true;
+  }
+  if (type->isFloatingPointTy()) {
+    is_constant = true;
+  } 
+  return is_constant;
 }

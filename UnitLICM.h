@@ -34,6 +34,7 @@ public:
   void printStats();
   bool checkIsHandled(Instruction &I);
   bool checkLoadStoreType(Instruction &inst);
+  bool checkGetElementPtrType(Instruction &inst);
 
   size_t NumHoistedStores;
   size_t NumHoistedLoads;
