@@ -33,6 +33,7 @@ public:
   bool hasAlias(Instruction &inst, Loop &loop, AAResults &AA);
   void printStats();
   bool checkIsHandled(Instruction &I);
+  bool checkLoadStoreType(Instruction &inst);
 
   size_t NumHoistedStores;
   size_t NumHoistedLoads;
