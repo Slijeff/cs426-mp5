@@ -3,6 +3,7 @@
 #include <llvm/IR/Constants.h>
 #include <map>
 #include "llvm/IR/PassManager.h"
+#include "llvm/Analysis/InstructionSimplify.h"
 
 using namespace llvm;
 
@@ -111,12 +112,12 @@ struct UnitSCCP : PassInfoMixin<UnitSCCP> {
     Visited.clear();
   }
 
-  void processCFG(size_t cfgIndex);
-  void processSSA(size_t ssaIndex);
-  void visitInstruction(Instruction &i);
+  void processCFG(size_t cfgIndex, Function &F, FunctionAnalysisManager &FAM);
+  void processSSA(size_t ssaIndex, Function &F, FunctionAnalysisManager &FAM);
+  void visitInstruction(Instruction &i, Function &F, FunctionAnalysisManager &FAM);
   void visitPhi(PHINode &i, Lattice &curStatus);
   void visitBranch(BranchInst &i);
-  void visitFoldable(Instruction &i, Lattice &curStatus);
+  void visitFoldable(Instruction &i, Lattice &curStatus, Function &F, FunctionAnalysisManager &FAM);
 
   static ConstantData *calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2);
   static ConstantData *calculateBinaryOp(BinaryOperator &inst, ConstantData *e1, ConstantData *e2);

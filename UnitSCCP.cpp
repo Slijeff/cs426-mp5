@@ -27,11 +27,14 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
   size_t ssaIndex = 0;
 
   while (cfgIndex < CFGWorklist.size() || ssaIndex < SSAWorklist.size()) {
-    while (cfgIndex < CFGWorklist.size()) processCFG(cfgIndex++, F, FAM);
-    while (ssaIndex < SSAWorklist.size()) processSSA(ssaIndex++, F, FAM);
+    while (cfgIndex < CFGWorklist.size()) { 
+      processCFG(cfgIndex++, F, FAM); 
+    }
+    while (ssaIndex < SSAWorklist.size()) { 
+      processSSA(ssaIndex++, F, FAM); 
+    }
   }
 
-//  dbgs() << lattice_map;
   replaceConsts(F);
   dbgs() <<"\n";
   // Set proper preserved analyses
@@ -40,7 +43,6 @@ PreservedAnalyses UnitSCCP::run(Function &F, FunctionAnalysisManager &FAM) {
 
 // Process an item in the CFG worklist
 void UnitSCCP::processCFG(size_t cfgIndex, Function &F, FunctionAnalysisManager &FAM) {
-//  dbgs() << "processing cfg at index: " << cfgIndex << "\n";
   auto [prevBB, curBB] = CFGWorklist[cfgIndex];
   // we only iterate every edge once
   if (Visited.count({prevBB, curBB}) != 0) return;
@@ -52,7 +54,6 @@ void UnitSCCP::processCFG(size_t cfgIndex, Function &F, FunctionAnalysisManager 
 }
 
 void UnitSCCP::processSSA(size_t ssaIndex, Function &F, FunctionAnalysisManager &FAM) {
-//  dbgs() << "processing ssa at index: " << ssaIndex << "\n";
   auto *instruction = SSAWorklist[ssaIndex];
   auto *BB = instruction->getParent();
   for (auto pred : predecessors(BB)) {
@@ -88,29 +89,18 @@ void UnitSCCP::visitInstruction(Instruction &i, Function &F, FunctionAnalysisMan
 }
 
 void UnitSCCP::visitPhi(PHINode &i, Lattice &curStatus) {
-//  dbgs() << "Got Phi node: ";
-//  i.print(dbgs(), true);
-//  dbgs() << "\n";
-//  const size_t phi_size = i.getNumOperands() / 2;
   const size_t phi_size = i.getNumIncomingValues();
   for (size_t idx = 0; idx < phi_size; idx++) {
-//    auto *prevBB = i.getIncomingBlock(2 * idx + 1);
     auto *prevBB = i.getIncomingBlock(idx);
     if (Visited.count({prevBB, i.getParent()}) != 0) {
-//      auto *op = i.getOperand(idx * 2);
       auto *op = i.getOperand(idx);
       auto opStatus = lattice_map.get(op);
       curStatus ^= opStatus;
     }
   }
 }
-void UnitSCCP::visitBranch(BranchInst &i) {
-//  dbgs() << "Got Branch node: ";
-//  i.print(dbgs(), true);
-//  dbgs() << "\n";
 
-//  dbgs() << "# ops: " << i.getNumOperands() << "\n";
-  // unconditional branch
+void UnitSCCP::visitBranch(BranchInst &i) {
   if (i.isUnconditional()) {
     auto *jmpTo = i.getSuccessor(0);
     CFGWorklist.emplace_back(i.getParent(), jmpTo);
@@ -128,13 +118,9 @@ void UnitSCCP::visitBranch(BranchInst &i) {
     CFGWorklist.emplace_back(i.getParent(), elseBB);
     CFGWorklist.emplace_back(i.getParent(), thenBB);
   }
-
 }
-void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus, Function &F, FunctionAnalysisManager &FAM) {
-//  dbgs() << "Got Foldable node: ";
-//  i.print(dbgs(), true);
-//  dbgs() << "\n";
 
+void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus, Function &F, FunctionAnalysisManager &FAM) {
   Constant *folded = nullptr;
   if (isa<BitCastInst>(i)) {
     BitCastInst *inst = dyn_cast<BitCastInst>(&i);
@@ -147,8 +133,7 @@ void UnitSCCP::visitFoldable(Instruction &i, Lattice &curStatus, Function &F, Fu
       i.replaceAllUsesWith(value);
       i.eraseFromParent();
     }
-  }
-  else if (isa<CmpInst>(i)) {
+  } else if (isa<CmpInst>(i)) {
     auto *e1 = lattice_map.get(i.getOperand(0)).constant;
     auto *e2 = lattice_map.get(i.getOperand(1)).constant;
     if (e1 != nullptr && e2 != nullptr) {
@@ -201,6 +186,7 @@ ConstantData *UnitSCCP::calculateUnaryOp(UnaryOperator &inst, ConstantData *e) {
     default:return nullptr;
   }
 }
+
 ConstantData *UnitSCCP::calculateBinaryOp(BinaryOperator &inst, ConstantData *e1, ConstantData *e2) {
   auto op = inst.getOpcode();
 
@@ -231,6 +217,7 @@ ConstantData *UnitSCCP::calculateBinaryOp(BinaryOperator &inst, ConstantData *e1
     default:return nullptr;
   }
 }
+
 ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, ConstantData *e2) {
   auto op = inst.getPredicate();
 
@@ -246,6 +233,7 @@ ConstantData *UnitSCCP::calculateCompare(CmpInst &inst, ConstantData *e1, Consta
     return nullptr;
   }
 }
+
 void UnitSCCP::replaceConsts(Function &F) {
   dbgs() << "Replacing constants...\n";
   std::vector<Instruction *> remove;
@@ -276,6 +264,7 @@ void UnitSCCP::replaceConsts(Function &F) {
   dbgs() << "NumInstRemoved: " << NumInstRemoved << " | NumInstReplaced: " << NumInstReplaced
          << " | NumDeadBlocks: " << NumDeadBlocks << "\n";
 }
+
 void UnitSCCP::eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, BasicBlock *invalid) {
   BranchInst::Create(jmp, inst);
   inst->eraseFromParent();
@@ -284,9 +273,12 @@ void UnitSCCP::eliminateConditionBranch(BranchInst *inst, BasicBlock *jmp, Basic
   }
   NumDeadBlocks++;
 }
+
 ConstantData *UnitSCCP::calculateSelect(SelectInst &inst, ConstantData *e1, ConstantData *e2) {
   auto cond = lattice_map.get(inst.getCondition());
-  if (cond.isBottom() || cond.isTop()) return nullptr;
+  if (cond.isBottom() || cond.isTop()) {
+    return nullptr;
+  }
   if (auto cd = dyn_cast<ConstantInt>(cond.constant)) {
     auto res = cd->getZExtValue() == 1 ? e1 : e2;
     return res;
